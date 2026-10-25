@@ -1,0 +1,3002 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ORBIT — Space Debris & Satellite Intelligence</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Space Grotesk & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js, OrbitControls & Satellite.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/5.0.0/satellite.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Space Grotesk"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            orbit: {
+              cyan: '#00f2fe',
+              blue: '#0369a1',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              ruby: '#ef4444',
+              violet: '#8b5cf6',
+              dark: '#02040a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Reset & Deep Space Base */
+    * { box-sizing: border-box; }
+    html, body {
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    body {
+      background-color: #010206;
+      color: #f1f5f9;
+      overflow-x: hidden;
+      font-feature-settings: "tnum" 1, "zero" 1;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    
+    /* Aerospace Custom Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 3px; }
+    ::-webkit-scrollbar-track { background: #010206; }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(0, 242, 254, 0.5), rgba(16, 185, 129, 0.4));
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 242, 254, 0.85);
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .space-vignette {
+      background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(1, 2, 6, 0.92) 100%);
+    }
+
+    /* Layered Frosted Glassmorphism */
+    .glass-panel {
+      background: linear-gradient(135deg, rgba(8, 16, 32, 0.82) 0%, rgba(4, 9, 20, 0.94) 100%);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75),
+                  0 0 0 1px rgba(0, 242, 254, 0.1) inset,
+                  0 1px 0 0 rgba(255, 255, 255, 0.22) inset;
+    }
+
+    .glass-panel-accent {
+      border-left: 3.5px solid #00f2fe;
+      box-shadow: -10px 0 30px -4px rgba(0, 242, 254, 0.4),
+                  0 25px 60px rgba(0, 0, 0, 0.75),
+                  0 0 0 1px rgba(0, 242, 254, 0.14) inset;
+    }
+
+    .glass-panel-danger {
+      background: linear-gradient(135deg, rgba(38, 8, 18, 0.82) 0%, rgba(16, 4, 10, 0.92) 100%);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-left: 3.5px solid #ef4444;
+      box-shadow: -10px 0 30px -4px rgba(239, 68, 68, 0.4),
+                  0 25px 60px rgba(0, 0, 0, 0.75);
+    }
+
+    .glass-panel-emerald {
+      border-left: 3.5px solid #10b981;
+      box-shadow: -10px 0 30px -4px rgba(16, 185, 129, 0.4),
+                  0 25px 60px rgba(0, 0, 0, 0.75);
+    }
+
+    .glass-pill {
+      background: rgba(12, 24, 48, 0.75);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    /* Equalizer Micro Bars Animation */
+    .eq-bar {
+      width: 2px;
+      border-radius: 1px;
+      background: #00f2fe;
+      transform-origin: bottom;
+      transition: height 0.08s ease;
+      height: 4px;
+    }
+    .audio-active .eq-bar:nth-child(1) { animation: eqDance 0.7s infinite alternate ease-in-out; }
+    .audio-active .eq-bar:nth-child(2) { animation: eqDance 0.5s infinite alternate ease-in-out 0.15s; }
+    .audio-active .eq-bar:nth-child(3) { animation: eqDance 0.85s infinite alternate ease-in-out 0.05s; }
+    .audio-active .eq-bar:nth-child(4) { animation: eqDance 0.6s infinite alternate ease-in-out 0.25s; }
+    .audio-active .eq-bar:nth-child(5) { animation: eqDance 0.9s infinite alternate ease-in-out 0.1s; }
+
+    @keyframes eqDance {
+      0% { height: 3px; opacity: 0.4; }
+      50% { height: 14px; opacity: 1; }
+      100% { height: 6px; opacity: 0.7; }
+    }
+
+    .reticle-corner {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      pointer-events: none;
+    }
+    .reticle-tr { top: 0; right: 0; border-top: 1.5px solid #00f2fe; border-right: 1.5px solid #00f2fe; }
+    .reticle-tl { top: 0; left: 0; border-top: 1.5px solid #00f2fe; border-left: 1.5px solid #00f2fe; }
+    .reticle-br { bottom: 0; right: 0; border-bottom: 1.5px solid #00f2fe; border-right: 1.5px solid #00f2fe; }
+    .reticle-bl { bottom: 0; left: 0; border-bottom: 1.5px solid #00f2fe; border-left: 1.5px solid #00f2fe; }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.85; filter: drop-shadow(0 0 5px currentColor); }
+      50% { opacity: 1; filter: drop-shadow(0 0 14px currentColor); }
+    }
+    .pulse-glow { animation: pulseGlow 2.5s infinite ease-in-out; }
+
+    .lead-reticle {
+      transition: transform 0.05s ease-out, border-color 0.2s ease;
+    }
+
+    .touch-btn {
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .touch-btn:active {
+      transform: scale(0.92);
+      filter: brightness(1.3);
+    }
+  </style>
+</head>
+<body class="selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- 3D WebGL Canvas Layer -->
+  <div id="canvas-container" class="fixed inset-0 z-0 pointer-events-auto touch-none">
+    <canvas id="orbit-canvas" class="w-full h-full block"></canvas>
+  </div>
+
+  <!-- Ambient Vignette -->
+  <div class="fixed inset-0 pointer-events-none z-1 space-vignette"></div>
+
+  <!-- FIXED HUD: Master Navigation Header -->
+  <header id="main-header" class="fixed top-0 left-0 right-0 z-50 px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 flex items-center justify-between border-b border-white/10 bg-slate-950/75 backdrop-blur-xl transition-all duration-500 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]">
+    <div class="flex items-center space-x-2.5 sm:space-x-3.5">
+      <div class="relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-cyan-950/60 border border-cyan-400/40 text-cyan-300 shadow-[0_0_15px_rgba(0,242,254,0.35)] flex-shrink-0">
+        <i data-lucide="satellite" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-300"></i>
+        <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400"></span>
+      </div>
+      <div>
+        <div class="flex items-center space-x-1.5 sm:space-x-2">
+          <span class="text-xs sm:text-sm font-bold tracking-widest text-white uppercase font-sans">ORBIT</span>
+          <span id="badge-feed" class="text-[8px] sm:text-[9px] font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 font-semibold flex items-center gap-1 shadow-[0_0_8px_rgba(16,185,129,0.25)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="hidden xs:inline">SGP4</span> ACTIVE
+          </span>
+        </div>
+        <p class="text-[8px] sm:text-[9px] font-mono text-slate-400 tracking-wider uppercase hidden xs:block">CRISP ORBITAL SURVEILLANCE</p>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Readout (Desktop) -->
+    <div class="hidden lg:flex items-center space-x-7 text-xs font-mono">
+      <div class="flex items-center space-x-2">
+        <span class="text-slate-400 uppercase text-[10px]">EPOCH UTC:</span>
+        <span id="utc-time" class="text-white font-semibold tracking-wider">00:00:00.00</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="text-slate-400 uppercase text-[10px]">ASSET LOCK:</span>
+        <span id="header-target-name" class="text-cyan-300 font-semibold">ISS (ZARYA)</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="text-slate-400 uppercase text-[10px]">NETWORK:</span>
+        <span id="api-latency" class="text-emerald-400 font-semibold">-- ms</span>
+      </div>
+    </div>
+
+    <!-- Quick Action Controls -->
+    <div class="flex items-center space-x-1.5 sm:space-x-2">
+      <!-- DEBRIS HUNTER GAME TRIGGER BUTTON -->
+      <button id="btn-enter-game" class="touch-btn relative group px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/30 to-rose-500/30 hover:from-amber-500/50 hover:to-rose-500/50 border border-amber-400/60 text-amber-300 font-mono text-[11px] sm:text-xs font-bold transition flex items-center space-x-1.5 shadow-[0_0_20px_rgba(245,158,11,0.35)] cursor-pointer">
+        <i data-lucide="crosshair" class="w-3.5 h-3.5 text-amber-400 animate-spin"></i>
+        <span class="tracking-wider hidden xs:inline">HUNTER</span>
+        <span class="text-[8px] sm:text-[9px] px-1 py-0.2 rounded bg-amber-400 text-slate-950 font-black">GAME</span>
+      </button>
+
+      <!-- Ambient Audio Engine Toggle & Mini Equalizer -->
+      <div class="relative group flex items-center">
+        <button id="btn-audio" title="Toggle Synthesized Space Audio" class="touch-btn glass-pill flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-400/50 transition">
+          <div id="eq-visualizer" class="flex items-end gap-0.5 h-3.5 w-3.5 py-0.5">
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+            <span class="eq-bar"></span>
+          </div>
+          <span id="audio-status" class="hidden md:inline text-[11px] font-semibold">AUDIO: OFF</span>
+        </button>
+
+        <div id="volume-popover" class="hidden group-hover:flex items-center gap-2 absolute top-full right-0 mt-1.5 px-3 py-2 rounded-xl glass-panel shadow-2xl z-50">
+          <i data-lucide="volume-1" class="w-3.5 h-3.5 text-cyan-400"></i>
+          <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.7" class="w-20 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400" />
+        </div>
+      </div>
+
+      <!-- Inspect / Free Orbit Controls -->
+      <button id="btn-inspect" class="touch-btn glass-pill flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-300 border-cyan-400/40 hover:bg-cyan-500/20 shadow-[0_0_12px_rgba(0,242,254,0.15)] transition">
+        <i data-lucide="orbit" class="w-3.5 h-3.5"></i>
+        <span id="inspect-label" class="text-[10px] sm:text-[11px] font-semibold">ORBIT</span>
+      </button>
+
+      <!-- Pure Globe View / Cinematic Toggle -->
+      <button id="btn-cinematic" title="Toggle Cinematic Clean View" class="touch-btn glass-pill flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-400/50 transition">
+        <i id="cinematic-icon" data-lucide="eye" class="w-3.5 h-3.5"></i>
+        <span id="cinematic-label" class="hidden md:inline text-[11px]">CINEMATIC</span>
+      </button>
+
+      <!-- INFO / SYSTEM BRIEFING MODAL TRIGGER BUTTON -->
+      <button id="btn-open-intel" title="Mission Briefing & System Architecture [I]" class="touch-btn glass-pill flex items-center space-x-1 sm:space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-200 border-cyan-400/50 hover:bg-cyan-500/20 hover:border-cyan-300 shadow-[0_0_15px_rgba(0,242,254,0.25)] transition cursor-pointer">
+        <i data-lucide="info" class="w-3.5 h-3.5 text-cyan-300"></i>
+        <span class="text-[10px] sm:text-[11px] font-bold tracking-wider">INTEL</span>
+        <span class="hidden lg:inline text-[9px] px-1 py-0.2 rounded bg-cyan-950/70 border border-cyan-500/30 text-cyan-300">I</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- FIXED HUD: Constellation & Satellite Target Selector Bar -->
+  <div id="constellation-bar" class="fixed top-14 sm:top-16 left-3 right-3 md:left-8 md:right-auto z-40 flex items-center gap-1.5 p-1.5 rounded-xl glass-panel max-w-[calc(100vw-1.5rem)] md:max-w-max overflow-x-auto no-scrollbar transition-all duration-500 mt-[env(safe-area-inset-top,0px)]">
+    <div class="text-[8px] sm:text-[9px] font-mono text-cyan-300 font-bold uppercase tracking-widest px-1.5 flex-shrink-0">TRACK:</div>
+    <div class="flex items-center gap-1.5 flex-nowrap flex-shrink-0">
+      <button data-norad="25544" class="sat-selector-btn touch-btn px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-medium transition whitespace-nowrap bg-cyan-500/20 border border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(0,242,254,0.35)]">
+        ISS
+      </button>
+      <button data-norad="20580" class="sat-selector-btn touch-btn px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-medium transition whitespace-nowrap bg-slate-900/60 border border-white/10 hover:border-cyan-400/40 text-slate-300 hover:text-cyan-200">
+        HUBBLE
+      </button>
+      <button data-norad="48274" class="sat-selector-btn touch-btn px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-medium transition whitespace-nowrap bg-slate-900/60 border border-white/10 hover:border-cyan-400/40 text-slate-300 hover:text-cyan-200">
+        TIANGONG
+      </button>
+      <button data-norad="27386" class="sat-selector-btn touch-btn px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-medium transition whitespace-nowrap bg-slate-900/60 border border-red-500/40 hover:border-red-400 text-red-300 hover:text-red-200">
+        ENVISAT
+      </button>
+      <button data-norad="starlink-cluster" class="sat-selector-btn touch-btn px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-medium transition whitespace-nowrap bg-slate-900/60 border border-white/10 hover:border-cyan-400/40 text-slate-300 hover:text-cyan-200">
+        STARLINK
+      </button>
+    </div>
+  </div>
+
+  <!-- FIXED HUD: Vertical Stage Scrubber -->
+  <aside id="stage-scrubber" class="hidden md:flex fixed right-3 md:right-8 top-1/2 -translate-y-1/2 z-40 flex-col items-center space-y-4 pointer-events-none transition-all duration-500">
+    <div class="text-[9px] font-mono tracking-widest text-slate-400 -rotate-90 mb-6 uppercase">ALTITUDE STRATA</div>
+    
+    <div class="flex flex-col items-center space-y-6 pointer-events-auto">
+      <button data-stage="0" class="stage-nav-item group relative flex items-center justify-center p-1" title="Stage 0: Deep Space Overview">
+        <div class="w-3 h-3 rounded-full border border-cyan-400 bg-cyan-400 shadow-[0_0_12px_#00f2fe] transition-all"></div>
+        <span class="absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity glass-pill text-[10px] font-mono text-cyan-300 px-2 py-1 rounded whitespace-nowrap">01. DEEP SPACE (36,000 KM)</span>
+      </button>
+      <div class="w-px h-5 bg-white/10"></div>
+
+      <button data-stage="1" class="stage-nav-item group relative flex items-center justify-center p-1" title="Stage 1: LEO Congestion">
+        <div class="w-2.5 h-2.5 rounded-full border border-slate-600 bg-slate-900 group-hover:border-cyan-400 transition-all"></div>
+        <span class="absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity glass-pill text-[10px] font-mono text-cyan-300 px-2 py-1 rounded whitespace-nowrap">02. LEO CONGESTION (1,200 KM)</span>
+      </button>
+      <div class="w-px h-5 bg-white/10"></div>
+
+      <button data-stage="2" class="stage-nav-item group relative flex items-center justify-center p-1" title="Stage 2: Target Satellite Tracking">
+        <div class="w-2.5 h-2.5 rounded-full border border-slate-600 bg-slate-900 group-hover:border-emerald-400 transition-all"></div>
+        <span class="absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity glass-pill text-[10px] font-mono text-emerald-300 px-2 py-1 rounded whitespace-nowrap">03. ASSET LOCK (420 KM)</span>
+      </button>
+      <div class="w-px h-5 bg-white/10"></div>
+
+      <button data-stage="3" class="stage-nav-item group relative flex items-center justify-center p-1" title="Stage 3: Kessler Syndrome">
+        <div class="w-2.5 h-2.5 rounded-full border border-slate-600 bg-slate-900 group-hover:border-red-400 transition-all"></div>
+        <span class="absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity glass-pill text-[10px] font-mono text-red-300 px-2 py-1 rounded whitespace-nowrap">04. KESSLER SYNDROME</span>
+      </button>
+      <div class="w-px h-5 bg-white/10"></div>
+
+      <button data-stage="4" class="stage-nav-item group relative flex items-center justify-center p-1" title="Stage 4: Active Remediation">
+        <div class="w-2.5 h-2.5 rounded-full border border-slate-600 bg-slate-900 group-hover:border-emerald-400 transition-all"></div>
+        <span class="absolute right-6 opacity-0 group-hover:opacity-100 transition-opacity glass-pill text-[10px] font-mono text-emerald-300 px-2 py-1 rounded whitespace-nowrap">05. DE-ORBIT HARPOON</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- FIXED HUD: Bottom Telemetry Ribbon -->
+  <footer id="main-footer" class="fixed bottom-0 left-0 right-0 z-40 px-3 sm:px-6 md:px-8 py-2 bg-slate-950/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-between text-[10px] sm:text-[11px] font-mono text-slate-400 transition-all duration-500 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+    <div class="flex items-center space-x-3 sm:space-x-6">
+      <div class="flex items-center space-x-1.5 sm:space-x-2">
+        <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-cyan-400 animate-ping"></span>
+        <span class="text-slate-300 hidden sm:inline">CATALOGUED:</span>
+        <span id="counter-objects" class="text-cyan-300 font-bold font-mono">36,892</span>
+      </div>
+      <div class="flex items-center space-x-1.5">
+        <span class="text-slate-500">VEL:</span>
+        <span id="hud-velocity" class="text-emerald-300 font-semibold">7.66 km/s</span>
+      </div>
+      <div class="hidden xs:flex items-center space-x-1.5">
+        <span class="text-slate-500">ALT:</span>
+        <span id="hud-altitude" class="text-cyan-300 font-semibold">418.5 km</span>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-2 sm:space-x-4">
+      <div class="flex items-center space-x-1.5">
+        <span class="text-slate-500 hidden sm:inline">PROPAGATOR:</span>
+        <span id="propagator-status" class="text-emerald-400 font-semibold text-[9px] sm:text-[11px]">SGP4 SYNC</span>
+      </div>
+      <span class="text-slate-700 hidden sm:inline">|</span>
+      <div class="hidden sm:inline text-slate-400 text-[10px]">SCROLL &darr;</div>
+    </div>
+  </footer>
+
+  <!-- FLOATING MINIMALIST INITIAL PILL TRIGGER -->
+  <div id="globe-welcome-pill" class="fixed bottom-12 sm:bottom-14 left-1/2 -translate-x-1/2 z-40 transition-all duration-700 ease-out flex flex-col items-center w-full px-4 max-w-sm pb-[env(safe-area-inset-bottom,0px)]">
+    <button id="btn-reveal-briefing" class="touch-btn group w-full sm:w-auto px-5 sm:px-6 py-3 rounded-full glass-panel border border-cyan-400/40 hover:border-cyan-300 text-cyan-300 text-xs font-mono tracking-widest uppercase shadow-[0_0_30px_rgba(0,242,254,0.25)] hover:shadow-[0_0_45px_rgba(0,242,254,0.5)] transition-all flex items-center justify-center space-x-2.5 cursor-pointer">
+      <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+      <span class="font-bold tracking-wider text-[11px] sm:text-xs">✦ EXPLORE INTELLIGENCE</span>
+      <i data-lucide="chevron-down" class="w-4 h-4 transition-transform group-hover:translate-y-0.5"></i>
+    </button>
+    <div class="mt-2 text-[9px] font-mono text-cyan-400/70 uppercase tracking-widest animate-pulse flex items-center gap-1.5">
+      <i data-lucide="mouse-pointer" class="w-3 h-3"></i>
+      <span>SCROLL OR TAP TO ENTER TELEMETRY</span>
+    </div>
+  </div>
+
+  <!-- AUDIO PERMISSION TOAST -->
+  <div id="audio-toast" class="fixed bottom-12 right-3 sm:right-6 z-50 flex items-center gap-2.5 px-3 py-2 rounded-xl glass-panel border border-cyan-400/40 text-cyan-200 text-xs font-mono shadow-[0_0_30px_rgba(0,242,254,0.25)] transition-all duration-700 opacity-90 hover:opacity-100 cursor-pointer max-w-[calc(100vw-1.5rem)] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
+    <div class="relative flex items-center justify-center w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-300 flex-shrink-0">
+      <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+      <span class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+    </div>
+    <span class="tracking-wide text-[10px] sm:text-[11px]">TAP FOR AMBIENT AUDIO</span>
+    <button id="btn-dismiss-toast" class="text-slate-400 hover:text-white ml-1">✕</button>
+  </div>
+
+  <!-- TACTICAL DEBRIS HUNTER FLIGHT HUD -->
+  <div id="game-flight-hud" class="fixed inset-0 z-50 pointer-events-none opacity-0 transition-opacity duration-700 flex flex-col justify-between p-3 sm:p-6 md:p-8 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+    <div class="flex items-start justify-between w-full gap-2">
+      <div class="glass-panel p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border-l-4 border-l-amber-400 max-w-[210px] sm:max-w-md pointer-events-auto shadow-2xl">
+        <div class="flex items-center space-x-1.5 text-[8px] sm:text-[10px] font-mono text-amber-400 font-bold tracking-widest uppercase mb-0.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+          <span>INTERCEPT TUG</span>
+        </div>
+        <div class="text-xs sm:text-lg font-bold font-sans text-white uppercase tracking-tight">
+          <span class="text-amber-300">DEBRIS HUNTER</span>
+        </div>
+        <div class="text-[9px] sm:text-[11px] font-mono text-slate-300 mt-0.5 flex flex-wrap items-center gap-1.5">
+          <span>DIST: <strong id="game-target-dist" class="text-cyan-300">SCANNING</strong></span>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-end gap-1.5 pointer-events-auto">
+        <button id="btn-exit-game" class="touch-btn glass-panel px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-red-500/50 hover:border-red-400 text-red-300 hover:text-white text-[11px] sm:text-xs font-mono font-bold transition flex items-center gap-1.5 shadow-[0_0_20px_rgba(239,68,68,0.3)] cursor-pointer">
+          <i data-lucide="power" class="w-3.5 h-3.5"></i>
+          <span>ABORT [ESC]</span>
+        </button>
+
+        <div class="glass-panel p-2 sm:p-3 rounded-xl font-mono text-right space-y-1 min-w-[125px] sm:min-w-[190px]">
+          <div class="flex justify-between items-center text-[9px] sm:text-[11px]">
+            <span class="text-slate-400">CLEARED:</span>
+            <span id="game-score-count" class="text-amber-300 font-bold text-xs sm:text-sm">0</span>
+          </div>
+          <div class="flex justify-between items-center text-[9px] sm:text-[11px]">
+            <span class="text-slate-400">MASS:</span>
+            <span id="game-score-mass" class="text-cyan-300 font-bold">0 kg</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Reticle -->
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div id="game-crosshair" class="relative w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center lead-reticle">
+        <div id="reticle-ring" class="w-14 h-14 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-cyan-400/50 flex items-center justify-center transition-colors">
+          <div class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
+        </div>
+        <div class="absolute w-20 sm:w-28 h-0.5 bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent"></div>
+        <div class="absolute h-20 sm:h-28 w-0.5 bg-gradient-to-b from-transparent via-cyan-400/40 to-transparent"></div>
+        
+        <div id="reticle-distance-tag" class="absolute -bottom-6 sm:-bottom-8 px-2 py-0.5 rounded glass-pill text-[9px] sm:text-[10px] font-mono text-cyan-300 whitespace-nowrap">
+          RADAR: 0.00 km
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="flex flex-col md:flex-row items-center md:items-end justify-between w-full gap-3">
+      <div class="flex md:hidden items-center justify-center pointer-events-auto touch-none select-none my-1">
+        <div class="relative w-32 h-32 rounded-full glass-panel border border-cyan-400/30 flex items-center justify-center shadow-2xl">
+          <button id="dpad-up" class="touch-btn absolute top-1 w-10 h-10 rounded-xl bg-cyan-500/20 active:bg-cyan-400/40 border border-cyan-400/40 text-cyan-300 flex items-center justify-center">
+            <i data-lucide="chevron-up" class="w-5 h-5"></i>
+          </button>
+          <button id="dpad-down" class="touch-btn absolute bottom-1 w-10 h-10 rounded-xl bg-cyan-500/20 active:bg-cyan-400/40 border border-cyan-400/40 text-cyan-300 flex items-center justify-center">
+            <i data-lucide="chevron-down" class="w-5 h-5"></i>
+          </button>
+          <button id="dpad-left" class="touch-btn absolute left-1 w-10 h-10 rounded-xl bg-cyan-500/20 active:bg-cyan-400/40 border border-cyan-400/40 text-cyan-300 flex items-center justify-center">
+            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+          </button>
+          <button id="dpad-right" class="touch-btn absolute right-1 w-10 h-10 rounded-xl bg-cyan-500/20 active:bg-cyan-400/40 border border-cyan-400/40 text-cyan-300 flex items-center justify-center">
+            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+          </button>
+          <div class="w-4 h-4 rounded-full bg-cyan-400/30 border border-cyan-400/60 pointer-events-none"></div>
+        </div>
+      </div>
+
+      <div class="glass-panel p-2.5 sm:p-4 rounded-xl sm:rounded-2xl w-full max-w-sm pointer-events-auto">
+        <div class="flex justify-between items-center text-[10px] sm:text-xs font-mono mb-1.5">
+          <span class="text-slate-300 font-bold flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400"></i>
+            DELTA-V FUEL
+          </span>
+          <span id="game-fuel-percent" class="text-cyan-300 font-bold">100%</span>
+        </div>
+        <div class="w-full h-1.5 sm:h-2 rounded-full bg-slate-800 overflow-hidden border border-white/10 mb-2">
+          <div id="game-fuel-bar" class="h-full bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 w-full transition-all duration-100"></div>
+        </div>
+        <div class="text-[8px] sm:text-[10px] font-mono text-slate-400 flex justify-between">
+          <span class="hidden sm:inline">CONTROLS: [W/S] THRUST | [A/D] YAW</span>
+          <span class="sm:hidden">USE D-PAD OR KEYBOARD</span>
+          <span>[SPACE] HARPOON</span>
+        </div>
+      </div>
+
+      <div class="flex gap-2.5 sm:gap-3 pointer-events-auto select-none">
+        <button id="touch-btn-boost" class="touch-btn w-16 h-14 sm:w-16 sm:h-16 rounded-2xl glass-panel border border-amber-400/80 bg-amber-500/15 active:bg-amber-500/30 text-amber-300 font-mono text-xs font-bold flex flex-col items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.25)]">
+          <i data-lucide="flame" class="w-4 h-4 sm:w-5 sm:h-5 text-amber-400"></i>
+          <span class="text-[9px] sm:text-[10px] tracking-wider mt-0.5">BOOST</span>
+        </button>
+        <button id="touch-btn-fire" class="touch-btn w-20 h-14 sm:w-20 sm:h-16 rounded-2xl glass-panel border border-cyan-400 bg-cyan-500/20 active:bg-cyan-500/40 text-cyan-300 font-mono text-xs font-black flex flex-col items-center justify-center shadow-[0_0_25px_rgba(0,242,254,0.4)]">
+          <i data-lucide="target" class="w-5 h-5 sm:w-6 sm:h-6 text-cyan-300"></i>
+          <span class="text-[9px] sm:text-[10px] tracking-wider mt-0.5">HARPOON</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISSION SUMMARY / GAMEOVER DIALOG -->
+  <div id="game-summary-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl opacity-0 pointer-events-none transition-opacity duration-500 p-4">
+    <div class="glass-panel p-5 sm:p-8 rounded-2xl max-w-md w-full text-center border-l-4 border-l-amber-400 relative">
+      <span class="reticle-corner reticle-tr border-amber-400"></span>
+      <span class="reticle-corner reticle-bl border-amber-400"></span>
+
+      <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-2 sm:mb-3 border border-amber-400/40">
+        <i data-lucide="shield-check" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+      </div>
+      <h3 class="text-xl sm:text-2xl font-bold font-sans text-white uppercase mb-1">MISSION CONCLUDED</h3>
+      <p class="text-[10px] sm:text-xs font-mono text-slate-400 mb-4 sm:mb-6">TELEMETRY SECURED // HAZARD LOG DEPLOYED</p>
+
+      <div class="grid grid-cols-2 gap-2.5 sm:gap-3 mb-5 sm:mb-6 font-mono text-left">
+        <div class="p-2.5 sm:p-3 rounded-xl bg-black/40 border border-white/5">
+          <div class="text-[9px] sm:text-[10px] text-slate-400 uppercase">DEBRIS NEUTRALIZED</div>
+          <div id="modal-score-count" class="text-lg sm:text-xl font-bold text-amber-400">0 OBJECTS</div>
+        </div>
+        <div class="p-2.5 sm:p-3 rounded-xl bg-black/40 border border-white/5">
+          <div class="text-[9px] sm:text-[10px] text-slate-400 uppercase">MASS VAPORIZED</div>
+          <div id="modal-score-mass" class="text-lg sm:text-xl font-bold text-cyan-400">0 kg</div>
+        </div>
+      </div>
+
+      <button id="btn-restart-mission" class="touch-btn w-full py-3 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 font-mono font-bold text-xs tracking-wider transition uppercase shadow-[0_0_20px_rgba(0,242,254,0.35)] cursor-pointer">
+        RETURN TO PLANETARY SURVEILLANCE
+      </button>
+    </div>
+  </div>
+
+  <!-- MISSION BRIEFING & SYSTEM INTEL MODAL -->
+  <div id="intel-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-2xl opacity-0 pointer-events-none transition-all duration-500 p-3 sm:p-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+    <div class="relative w-full max-w-3xl max-h-[90vh] glass-panel glass-panel-accent rounded-2xl sm:rounded-3xl p-4 sm:p-7 md:p-8 flex flex-col shadow-[0_30px_90px_rgba(0,0,0,0.85)] border border-white/15 overflow-hidden">
+      <span class="reticle-corner reticle-tr border-cyan-400"></span>
+      <span class="reticle-corner reticle-tl border-cyan-400"></span>
+      <span class="reticle-corner reticle-br border-cyan-400"></span>
+      <span class="reticle-corner reticle-bl border-cyan-400"></span>
+
+      <div class="flex items-start justify-between pb-3.5 sm:pb-4 border-b border-white/10 flex-shrink-0">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span class="text-[9px] sm:text-[11px] font-mono text-cyan-300 uppercase tracking-widest font-bold">SYSTEM INTEL // FTUE BRIEFING</span>
+            <span class="text-[8px] sm:text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-semibold">STATUS: NOMINAL</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl md:text-3xl font-black font-sans text-white uppercase tracking-tight">
+            ORBIT <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-300 to-emerald-400">INTELLIGENCE</span>
+          </h2>
+          <p class="text-[10px] sm:text-xs font-mono text-slate-400 mt-0.5">Real-Time Space Debris Surveillance & SGP4 Orbital Telemetry Platform</p>
+        </div>
+
+        <button id="btn-close-intel" class="touch-btn p-1.5 sm:p-2 rounded-xl glass-pill text-slate-400 hover:text-white hover:border-cyan-400/50 transition cursor-pointer" title="Close Briefing [ESC]">
+          <i data-lucide="x" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto pr-1 sm:pr-2 space-y-4 sm:space-y-6 my-4 text-slate-300 text-xs sm:text-sm font-sans font-light leading-relaxed">
+        <div class="p-3 sm:p-4 rounded-xl bg-black/40 border border-white/5 space-y-2">
+          <div class="text-[10px] sm:text-xs font-mono text-cyan-300 uppercase font-bold flex items-center gap-1.5">
+            <i data-lucide="globe-2" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>01 // WHAT IS ORBIT?</span>
+          </div>
+          <p class="text-slate-300 text-[11px] sm:text-xs leading-relaxed">
+            <strong>ORBIT</strong> is an interactive aerospace intelligence visualization tracking anthropogenic space debris and operational satellites circling Earth. At velocities exceeding <strong>28,000 km/h (7.8 km/s)</strong>, even small fragments possess destructive kinetic energy.
+          </p>
+        </div>
+
+        <div>
+          <div class="text-[10px] sm:text-xs font-mono text-emerald-300 uppercase font-bold flex items-center gap-1.5 mb-2.5">
+            <i data-lucide="cpu" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>02 // ARCHITECTURE & CORE CAPABILITIES</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 font-mono text-[10px] sm:text-xs">
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+              <div class="text-cyan-300 font-bold mb-1 flex items-center gap-1.5">
+                <i data-lucide="satellite" class="w-3.5 h-3.5 text-cyan-400"></i>
+                <span>Real SGP4 TLE Math</span>
+              </div>
+              <p class="text-slate-400 text-[10px] leading-snug font-sans">
+                Real-time Earth-Centered Inertial (ECI) coordinate propagation with live public TLE feeds for ISS, Hubble, Tiangong, Envisat, and Starlink.
+              </p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+              <div class="text-emerald-300 font-bold mb-1 flex items-center gap-1.5">
+                <i data-lucide="globe" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>High-Clarity Planetary Shader</span>
+              </div>
+              <p class="text-slate-400 text-[10px] leading-snug font-sans">
+                Crisp photorealistic Earth surface with day/night terminator transitions and night city lights, with whitish cloud haze removed.
+              </p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+              <div class="text-amber-300 font-bold mb-1 flex items-center gap-1.5">
+                <i data-lucide="crosshair" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>Debris Hunter Simulator</span>
+              </div>
+              <p class="text-slate-400 text-[10px] leading-snug font-sans">
+                6-DOF orbital intercept tug equipped with RCS thrusters, boost acceleration, magnetic tether harpoons, and de-orbit incineration.
+              </p>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-white/5">
+              <div class="text-violet-300 font-bold mb-1 flex items-center gap-1.5">
+                <i data-lucide="volume-2" class="w-3.5 h-3.5 text-violet-400"></i>
+                <span>Synthesized Web Audio</span>
+              </div>
+              <p class="text-slate-400 text-[10px] leading-snug font-sans">
+                Generative space acoustics with sub-bass propulsion hum, radar pings, targeting locks, and de-orbit sound effects.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-[10px] sm:text-xs font-mono text-cyan-300 uppercase font-bold flex items-center gap-1.5 mb-2.5">
+            <i data-lucide="command" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>03 // NAVIGATION & FLIGHT HOTKEYS</span>
+          </div>
+
+          <div class="p-3 sm:p-4 rounded-xl bg-black/40 border border-white/5 space-y-2.5 font-mono text-[10px] sm:text-xs">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-white/10 text-cyan-300 font-bold">1 — 5</span>
+                <span class="text-slate-400 text-[10px]">Jump Stages</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-white/10 text-emerald-300 font-bold">L</span>
+                <span class="text-slate-400 text-[10px]">Lock Camera</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-white/10 text-amber-300 font-bold">H</span>
+                <span class="text-slate-400 text-[10px]">Debris Hunter</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-white/10 text-slate-300 font-bold">C</span>
+                <span class="text-slate-400 text-[10px]">Pure Globe</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-white/10 text-slate-300 font-bold">M</span>
+                <span class="text-slate-400 text-[10px]">Audio Mute</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-white/10 text-cyan-300 font-bold">I</span>
+                <span class="text-slate-400 text-[10px]">Info Briefing</span>
+              </div>
+            </div>
+
+            <div class="pt-2 border-t border-white/10 text-[10px] text-slate-400 flex flex-wrap items-center gap-3">
+              <span><strong>Mouse:</strong> Left Drag (Rotate) // Scroll (Zoom) // Right Drag (Pan)</span>
+              <span><strong>Touch:</strong> 1-Finger Drag (Orbit) // Pinch (Zoom) // D-Pad (Flight)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 sm:pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0">
+        <label class="flex items-center gap-2 cursor-pointer select-none">
+          <input id="chk-dont-show-intel" type="checkbox" class="w-3.5 h-3.5 rounded bg-slate-900 border-white/20 text-cyan-400 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-cyan-400">
+          <span class="text-[10px] sm:text-xs font-mono text-slate-400 hover:text-slate-300">Don't show briefing on launch</span>
+        </label>
+
+        <button id="btn-enter-orbit-cta" class="touch-btn w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 font-mono font-bold text-xs tracking-wider uppercase transition shadow-[0_0_25px_rgba(0,242,254,0.35)] flex items-center justify-center gap-2 cursor-pointer">
+          <span>INITIALIZE TELEMETRY // ENTER ORBIT</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCROLLABLE SECTIONS (Scrollytelling Flow) -->
+  <main id="story-container" class="relative z-10">
+
+    <!-- SECTION 1: HERO OVERVIEW -->
+    <section class="min-h-screen flex items-end justify-start px-3 sm:px-6 md:px-12 pb-14 sm:pb-12 pt-20 sm:pt-24 pointer-events-none" id="section-0">
+      <div id="hero-docked-panel" class="w-full sm:max-w-[540px] glass-panel glass-panel-accent p-4 sm:p-6 md:p-8 rounded-2xl relative pointer-events-auto opacity-0 translate-y-8 scale-95 transition-all duration-700 ease-out mb-[env(safe-area-inset-bottom,0px)]">
+        <span class="reticle-corner reticle-tr"></span>
+        <span class="reticle-corner reticle-tl"></span>
+        <span class="reticle-corner reticle-br"></span>
+        <span class="reticle-corner reticle-bl"></span>
+
+        <div class="flex items-center justify-between mb-2.5 sm:mb-3.5">
+          <div class="flex items-center space-x-1.5 sm:space-x-2">
+            <span class="inline-block w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-cyan-400 pulse-glow"></span>
+            <span class="text-[9px] sm:text-[11px] font-mono tracking-widest text-cyan-300 uppercase font-semibold">GLOBAL ORBIT // TELEMETRY</span>
+          </div>
+
+          <button id="btn-close-hero" class="touch-btn px-2 py-0.5 rounded-md glass-pill text-slate-400 hover:text-cyan-300 text-[9px] sm:text-[10px] font-mono transition flex items-center space-x-1" title="Dismiss Card & Return to Pure Globe">
+            <span>PURE GLOBE</span>
+            <i data-lucide="eye" class="w-3 h-3"></i>
+          </button>
+        </div>
+
+        <h1 class="text-2xl sm:text-4xl md:text-[42px] font-black tracking-tight text-white font-sans uppercase leading-tight sm:leading-none mb-3 sm:mb-4">
+          ORBIT <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-300 to-emerald-400">INTELLIGENCE</span>
+        </h1>
+
+        <p class="text-[11px] sm:text-[13px] md:text-sm text-slate-300 font-sans leading-relaxed mb-4 sm:mb-6 font-normal">
+          Over <strong class="text-cyan-300 font-semibold font-mono">130 million</strong> pieces of untracked space debris orbit Earth at velocities exceeding 28,000 km/h. A 1-cm fragment carries the kinetic impact of an exploding grenade.
+        </p>
+
+        <div class="pt-3 sm:pt-5 pb-3 sm:pb-5 border-t border-white/10 grid grid-cols-3 gap-1.5 sm:gap-2 text-center font-mono mb-3.5 sm:mb-5">
+          <div class="p-1.5 sm:p-2 rounded-lg bg-black/20 border border-white/5">
+            <div class="text-[8px] sm:text-[10px] text-slate-400 uppercase tracking-widest mb-0.5 sm:mb-1">TRACKED</div>
+            <div class="text-sm sm:text-lg md:text-xl font-bold text-cyan-300">36,500+</div>
+          </div>
+          <div class="p-1.5 sm:p-2 rounded-lg bg-black/20 border border-white/5">
+            <div class="text-[8px] sm:text-[10px] text-slate-400 uppercase tracking-widest mb-0.5 sm:mb-1">ALTITUDE</div>
+            <div class="text-sm sm:text-lg md:text-xl font-bold text-white">780 km</div>
+          </div>
+          <div class="p-1.5 sm:p-2 rounded-lg bg-black/20 border border-white/5">
+            <div class="text-[8px] sm:text-[10px] text-slate-400 uppercase tracking-widest mb-0.5 sm:mb-1">RISK</div>
+            <div class="text-sm sm:text-lg md:text-xl font-bold text-amber-400">ELEVATED</div>
+          </div>
+        </div>
+
+        <div class="pt-3 sm:pt-4 border-t border-white/10 flex items-center justify-between gap-2">
+          <div class="flex items-center space-x-1.5 text-[9px] sm:text-[11px] font-mono text-cyan-400 font-medium">
+            <i data-lucide="mouse-pointer" class="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 animate-pulse"></i>
+            <span class="tracking-wider uppercase">SCROLL TO DESCEND</span>
+          </div>
+
+          <button onclick="scrollToSection(1)" class="touch-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 font-mono text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-[0_0_20px_rgba(0,242,254,0.4)] flex-shrink-0 cursor-pointer">
+            <span>DESCEND</span>
+            <i data-lucide="arrow-down" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: LEO CONGESTION BELT -->
+    <section class="min-h-screen flex items-center justify-end px-3 sm:px-8 md:px-16 lg:px-24 py-16 sm:py-24" id="section-1">
+      <div class="w-full sm:max-w-xl glass-panel p-4 sm:p-6 md:p-8 rounded-2xl relative border-l-4 border-l-amber-400">
+        <span class="reticle-corner reticle-tr border-amber-400"></span>
+        <span class="reticle-corner reticle-bl border-amber-400"></span>
+
+        <div class="flex items-center space-x-2 mb-2 sm:mb-3">
+          <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+          <span class="text-[10px] sm:text-xs font-mono tracking-widest text-amber-300 uppercase">ALTITUDE: 200 — 2,000 KM</span>
+        </div>
+
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold text-white font-sans mb-2 sm:mb-3">
+          The LEO Congestion Belt
+        </h2>
+
+        <p class="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed mb-4 sm:mb-5">
+          Low Earth Orbit is experiencing an exponential density spike driven by mega-constellations, derelict upper stages, and leftover debris.
+        </p>
+
+        <div class="space-y-2.5 sm:space-y-3 font-mono text-xs">
+          <div class="p-2.5 sm:p-3.5 rounded-xl bg-black/30 border border-white/10 flex items-start space-x-2.5 sm:space-x-3">
+            <i data-lucide="satellite" class="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0"></i>
+            <div>
+              <div class="text-slate-100 font-semibold text-[11px] sm:text-xs">Active Constellations</div>
+              <p class="text-slate-400 text-[10px] sm:text-[11px] font-sans mt-0.5">Thousands of active nodes conducting automated orbital drift avoidance burns every week.</p>
+            </div>
+          </div>
+
+          <div class="p-2.5 sm:p-3.5 rounded-xl bg-black/30 border border-white/10 flex items-start space-x-2.5 sm:space-x-3">
+            <i data-lucide="box" class="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0"></i>
+            <div>
+              <div class="text-slate-100 font-semibold text-[11px] sm:text-xs">Derelict Rocket Boosters</div>
+              <p class="text-slate-400 text-[10px] sm:text-[11px] font-sans mt-0.5">Multi-ton defunct steel boosters with unvented fuel cells prone to spontaneous vacuum explosions.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 sm:mt-6 flex items-center justify-between">
+          <span class="text-[10px] sm:text-xs font-mono text-slate-400">DENSITY: <span class="text-amber-400 font-bold">CRITICAL</span></span>
+          <button onclick="scrollToSection(2)" class="touch-btn px-3 py-1.5 rounded-lg glass-pill text-[10px] sm:text-xs font-mono text-cyan-300 hover:border-cyan-400/50 transition">
+            TRACK ASSET &darr;
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: TARGET SATELLITE INSPECTION -->
+    <section class="min-h-screen flex items-center px-3 sm:px-8 md:px-16 lg:px-24 py-16 sm:py-24" id="section-2">
+      <div class="w-full sm:max-w-xl glass-panel glass-panel-emerald p-4 sm:p-6 md:p-8 rounded-2xl relative">
+        <span class="reticle-corner reticle-tr border-emerald-400"></span>
+        <span class="reticle-corner reticle-bl border-emerald-400"></span>
+
+        <div class="flex items-center justify-between mb-2 sm:mb-3">
+          <div class="flex items-center space-x-1.5 sm:space-x-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 pulse-glow"></span>
+            <span id="target-title-prefix" class="text-[10px] sm:text-xs font-mono tracking-widest text-emerald-300 uppercase">TARGET LOCK // ISS</span>
+          </div>
+          <span id="target-norad" class="text-[9px] sm:text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/40 border border-emerald-500/40 text-emerald-300">25544</span>
+        </div>
+
+        <h2 id="target-title-name" class="text-xl sm:text-2xl md:text-4xl font-bold text-white font-sans mb-2 sm:mb-3">
+          Asset Telemetry Lock
+        </h2>
+
+        <p id="target-description" class="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed mb-4 sm:mb-5">
+          High-value assets execute periodic avoidance maneuvers to dodge hypervelocity debris fragments.
+        </p>
+
+        <div class="p-3 sm:p-4 rounded-xl bg-black/40 border border-white/10 font-mono text-[10px] sm:text-xs space-y-1.5 sm:space-y-2 mb-4 sm:mb-5">
+          <div class="flex justify-between border-b border-white/5 pb-1 sm:pb-1.5">
+            <span class="text-slate-400">SUB-SATELLITE NADIR:</span>
+            <span id="tel-coords" class="text-cyan-300 font-semibold">24.51°N, 81.33°W</span>
+          </div>
+          <div class="flex justify-between border-b border-white/5 pb-1 sm:pb-1.5">
+            <span class="text-slate-400">ALTITUDE:</span>
+            <span id="tel-altitude" class="text-cyan-300 font-semibold">419.2 km</span>
+          </div>
+          <div class="flex justify-between border-b border-white/5 pb-1 sm:pb-1.5">
+            <span class="text-slate-400">VELOCITY VECTOR:</span>
+            <span id="tel-velocity" class="text-white font-semibold">7.66 km/s</span>
+          </div>
+          <div class="flex justify-between border-b border-white/5 pb-1 sm:pb-1.5">
+            <span class="text-slate-400">INCLINATION:</span>
+            <span id="tel-inclination" class="text-white font-semibold">51.64°</span>
+          </div>
+          <div class="flex justify-between pt-0.5">
+            <span class="text-slate-400">OPERATOR:</span>
+            <span id="tel-origin" class="text-emerald-400 font-semibold truncate max-w-[170px] sm:max-w-none">MULTINATIONAL</span>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <button id="btn-highlight-satellite" class="touch-btn flex-1 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-200 font-mono text-[11px] sm:text-xs font-semibold transition flex items-center justify-center space-x-1.5 shadow-[0_0_15px_rgba(0,242,254,0.2)]">
+            <i data-lucide="crosshair" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+            <span id="btn-highlight-text">LOCK CAMERA</span>
+          </button>
+          <button onclick="scrollToSection(3)" class="touch-btn px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl glass-pill text-slate-300 font-mono text-[11px] sm:text-xs hover:border-cyan-400/50 transition">
+            CASCADE &darr;
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: KESSLER SYNDROME SIMULATION -->
+    <section class="min-h-screen flex items-center justify-end px-3 sm:px-8 md:px-16 lg:px-24 py-16 sm:py-24" id="section-1-threat">
+      <div class="w-full sm:max-w-xl glass-panel glass-panel-danger p-4 sm:p-6 md:p-8 rounded-2xl relative">
+        <span class="reticle-corner reticle-tr border-red-500"></span>
+        <span class="reticle-corner reticle-bl border-red-500"></span>
+
+        <div class="flex items-center space-x-1.5 sm:space-x-2 mb-2 sm:mb-3">
+          <span class="inline-block w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-red-500 pulse-glow"></span>
+          <span class="text-[10px] sm:text-xs font-mono tracking-widest text-red-400 uppercase font-semibold">CASCADE THREAT</span>
+        </div>
+
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold text-white font-sans mb-2 sm:mb-3">
+          Kessler Syndrome Cascade
+        </h2>
+
+        <p class="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed mb-3 sm:mb-4">
+          When debris density crosses critical thresholds, collisions trigger exponential self-sustaining shrapnel chains that render orbital belts impenetrable.
+        </p>
+
+        <div class="p-3 sm:p-4 rounded-xl bg-black/40 border border-red-500/40 mb-3.5 sm:mb-5 font-mono text-xs">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-red-300 font-semibold text-[11px] sm:text-xs">FRAGMENTATION ENGINE</span>
+            <span id="cascade-status" class="text-[9px] sm:text-[10px] text-red-400 uppercase">READY</span>
+          </div>
+          <button id="btn-trigger-cascade" class="touch-btn w-full py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-mono font-bold text-[11px] sm:text-xs tracking-wider transition flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(239,68,68,0.4)] cursor-pointer">
+            <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+            <span>TRIGGER COLLISION CASCADE</span>
+          </button>
+        </div>
+
+        <div class="flex justify-between items-center text-[10px] sm:text-xs font-mono text-slate-400">
+          <span>RUNAWAY CASCADE: <strong class="text-red-400">CRITICAL</strong></span>
+          <button onclick="scrollToSection(4)" class="touch-btn text-cyan-400 hover:underline">
+            CLEANUP &darr;
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: REMEDIATION & HARPOON -->
+    <section class="min-h-screen flex items-center px-3 sm:px-8 md:px-16 lg:px-24 py-16 sm:py-24" id="section-4">
+      <div class="w-full sm:max-w-xl glass-panel glass-panel-emerald p-4 sm:p-6 md:p-8 rounded-2xl relative">
+        <span class="reticle-corner reticle-tr border-emerald-400"></span>
+        <span class="reticle-corner reticle-bl border-emerald-400"></span>
+
+        <div class="flex items-center space-x-2 mb-2 sm:mb-3">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span class="text-[10px] sm:text-xs font-mono tracking-widest text-emerald-300 uppercase">ACTIVE DEBRIS REMOVAL</span>
+        </div>
+
+        <h2 class="text-xl sm:text-2xl md:text-4xl font-bold text-white font-sans mb-2 sm:mb-3">
+          Active Space Remediation
+        </h2>
+
+        <p class="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed mb-3 sm:mb-4">
+          Global aerospace agencies are testing autonomous magnetic docking, ion-beam shepherd propulsion, and laser ablation.
+        </p>
+
+        <div class="p-3 sm:p-4 rounded-xl bg-black/40 border border-emerald-500/30 mb-3.5 sm:mb-5 font-mono text-xs">
+          <div class="flex items-center justify-between mb-2 sm:mb-3">
+            <span class="text-emerald-300 font-semibold text-[11px] sm:text-xs">DEPLOY ION-BEAM</span>
+            <span id="cleanup-count" class="text-cyan-400 font-bold text-[11px] sm:text-xs">REMOVED: 0</span>
+          </div>
+          <button id="btn-clean-debris" class="touch-btn w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-mono font-bold text-[11px] sm:text-xs tracking-wider transition flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(16,185,129,0.35)] cursor-pointer">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            <span>DEPLOY ION SHEPHERD</span>
+          </button>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2">
+          <button onclick="scrollToSection(0)" class="touch-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl glass-pill text-[10px] sm:text-xs font-mono text-slate-200 hover:border-cyan-400/50 transition flex items-center space-x-1.5">
+            <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+            <span>DEEP SPACE</span>
+          </button>
+          <div class="text-[9px] sm:text-[11px] font-mono text-slate-400">
+            ORBIT PLATFORM
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Interactive Inspect Mode Notification Overlay -->
+  <div id="inspect-banner" class="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full glass-panel border border-cyan-400 text-cyan-300 text-[10px] sm:text-xs font-mono shadow-[0_0_25px_rgba(0,242,254,0.3)] backdrop-blur-md hidden pointer-events-none transition-all duration-300 text-center max-w-[90vw]">
+    <div class="flex items-center justify-center space-x-2">
+      <i data-lucide="move" class="w-3.5 h-3.5 text-cyan-300 flex-shrink-0"></i>
+      <span>TOUCH & DRAG TO ROTATE | PINCH OR SCROLL TO ZOOM</span>
+    </div>
+  </div>
+
+  <!-- MINIMALIST CHASE-CAM TRACKING OVERLAY -->
+  <div id="tracking-hud-overlay" class="fixed top-4 right-3 sm:top-6 sm:right-6 z-50 flex items-center gap-2 sm:gap-3 opacity-0 pointer-events-none transition-all duration-500 ease-out max-w-[calc(100vw-1.5rem)] pt-[env(safe-area-inset-top,0px)]">
+    <div class="glass-pill px-2.5 sm:px-3 py-1.5 rounded-xl border border-emerald-400/40 flex items-center gap-1.5 sm:gap-2.5 text-[10px] sm:text-xs font-mono shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+      <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-ping"></span>
+      <span id="track-overlay-name" class="text-white font-bold tracking-wide truncate max-w-[120px] sm:max-w-none">ISS</span>
+      <span class="text-slate-500">|</span>
+      <span id="track-overlay-coords" class="text-cyan-300 text-[9px] sm:text-[11px]">418.5 km</span>
+    </div>
+
+    <button id="btn-exit-tracking" class="touch-btn glass-panel px-3 py-1.5 rounded-xl border border-white/20 hover:border-red-400 text-slate-300 hover:text-red-300 text-[10px] sm:text-xs font-mono transition flex items-center gap-1 shadow-[0_4px_16px_rgba(0,0,0,0.5)] cursor-pointer">
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      <span>EXIT</span>
+    </button>
+  </div>
+
+  <!-- Application Script -->
+  <script>
+    const isMobileDevice = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+    /* ==========================================================================
+       1. SYNTHESIZED AEROSPACE WEB AUDIO ENGINE
+       ========================================================================== */
+    class SpaceSoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = false;
+        this.masterVolume = 0.7;
+
+        this.masterGain = null;
+        this.analyser = null;
+
+        this.droneOsc1 = null;
+        this.droneOsc2 = null;
+        this.droneLfo = null;
+        this.droneLfoGain = null;
+        this.droneFilter = null;
+        this.droneGain = null;
+
+        this.radarInterval = null;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+
+        this.ctx = new AudioContextClass();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(this.masterVolume, this.ctx.currentTime);
+
+        this.analyser = this.ctx.createAnalyser();
+        this.analyser.fftSize = 64;
+
+        this.masterGain.connect(this.analyser);
+        this.analyser.connect(this.ctx.destination);
+      }
+
+      resumeContext() {
+        if (!this.ctx) this.init();
+        if (this.ctx && this.ctx.state === 'suspended') {
+          return this.ctx.resume();
+        }
+        return Promise.resolve();
+      }
+
+      setVolume(val) {
+        this.masterVolume = Math.max(0, Math.min(1, parseFloat(val)));
+        if (this.masterGain && this.ctx) {
+          this.masterGain.gain.setTargetAtTime(this.masterVolume, this.ctx.currentTime, 0.05);
+        }
+      }
+
+      startDrone() {
+        if (!this.enabled || !this.ctx || this.droneOsc1) return;
+        try {
+          const now = this.ctx.currentTime;
+          this.droneOsc1 = this.ctx.createOscillator();
+          this.droneOsc2 = this.ctx.createOscillator();
+          this.droneOsc1.type = 'sine';
+          this.droneOsc2.type = 'sine';
+          this.droneOsc1.frequency.setValueAtTime(48.0, now);
+          this.droneOsc2.frequency.setValueAtTime(48.7, now);
+
+          this.droneFilter = this.ctx.createBiquadFilter();
+          this.droneFilter.type = 'lowpass';
+          this.droneFilter.frequency.setValueAtTime(130, now);
+          this.droneFilter.Q.setValueAtTime(2.8, now);
+
+          this.droneLfo = this.ctx.createOscillator();
+          this.droneLfoGain = this.ctx.createGain();
+          this.droneLfo.type = 'sine';
+          this.droneLfo.frequency.setValueAtTime(0.12, now);
+          this.droneLfoGain.gain.setValueAtTime(35, now);
+          this.droneLfo.connect(this.droneLfoGain);
+          this.droneLfoGain.connect(this.droneFilter.frequency);
+
+          this.droneGain = this.ctx.createGain();
+          this.droneGain.gain.setValueAtTime(0.0001, now);
+          this.droneGain.gain.exponentialRampToValueAtTime(0.12, now + 4.0);
+
+          this.droneOsc1.connect(this.droneFilter);
+          this.droneOsc2.connect(this.droneFilter);
+          this.droneFilter.connect(this.droneGain);
+          this.droneGain.connect(this.masterGain);
+
+          this.droneOsc1.start(now);
+          this.droneOsc2.start(now);
+          this.droneLfo.start(now);
+
+          this.startPeriodicRadar();
+        } catch (e) {}
+      }
+
+      stopDrone() {
+        if (this.radarInterval) {
+          clearInterval(this.radarInterval);
+          this.radarInterval = null;
+        }
+        if (this.droneGain && this.ctx) {
+          try {
+            const now = this.ctx.currentTime;
+            this.droneGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+            setTimeout(() => {
+              if (this.droneOsc1) {
+                this.droneOsc1.stop();
+                this.droneOsc2.stop();
+                this.droneLfo.stop();
+                this.droneOsc1.disconnect();
+                this.droneOsc2.disconnect();
+                this.droneLfo.disconnect();
+                this.droneOsc1 = null;
+                this.droneOsc2 = null;
+                this.droneLfo = null;
+              }
+            }, 850);
+          } catch (e) {
+            this.droneOsc1 = null;
+          }
+        }
+      }
+
+      startPeriodicRadar() {
+        if (this.radarInterval) clearInterval(this.radarInterval);
+        this.radarInterval = setInterval(() => {
+          if (this.enabled && Math.random() > 0.3) {
+            this.playOrbitalPing();
+          }
+        }, 11000);
+      }
+
+      playOrbitalPing() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1480, now);
+          osc.frequency.exponentialRampToValueAtTime(740, now + 0.6);
+          gain.gain.setValueAtTime(0.025, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 0.65);
+        } catch (e) {}
+      }
+
+      playTelemetryDataStream() {
+        if (!this.enabled || !this.ctx) return;
+        [1800, 2200, 1600, 2400, 2000].forEach((freq, idx) => {
+          setTimeout(() => {
+            if (!this.enabled || !this.ctx) return;
+            try {
+              const now = this.ctx.currentTime;
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(freq, now);
+              gain.gain.setValueAtTime(0.035, now);
+              gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+              osc.connect(gain);
+              gain.connect(this.masterGain);
+              osc.start(now);
+              osc.stop(now + 0.045);
+            } catch (e) {}
+          }, idx * 45);
+        });
+      }
+
+      playLockChime(isEngaged = true) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const filter = this.ctx.createBiquadFilter();
+
+          osc.type = 'sawtooth';
+          filter.type = 'bandpass';
+          filter.Q.setValueAtTime(6.0, now);
+
+          if (isEngaged) {
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(1760, now + 0.28);
+            filter.frequency.setValueAtTime(600, now);
+            filter.frequency.exponentialRampToValueAtTime(2200, now + 0.28);
+          } else {
+            osc.frequency.setValueAtTime(1320, now);
+            osc.frequency.exponentialRampToValueAtTime(330, now + 0.22);
+            filter.frequency.setValueAtTime(1800, now);
+            filter.frequency.exponentialRampToValueAtTime(400, now + 0.22);
+          }
+
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.masterGain);
+
+          osc.start(now);
+          osc.stop(now + 0.35);
+        } catch (e) {}
+      }
+
+      playGlassClick(pitch = 1) {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const filter = this.ctx.createBiquadFilter();
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(2400 * pitch, now);
+          filter.type = 'highpass';
+          filter.frequency.setValueAtTime(1200, now);
+
+          gain.gain.setValueAtTime(0.04, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.masterGain);
+
+          osc.start(now);
+          osc.stop(now + 0.04);
+        } catch (e) {}
+      }
+
+      playBeep(freq = 880, duration = 0.08, type = 'sine') {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.05, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + duration);
+        } catch (e) {}
+      }
+
+      playExplosion() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const subOsc = this.ctx.createOscillator();
+          const subGain = this.ctx.createGain();
+          subOsc.type = 'sine';
+          subOsc.frequency.setValueAtTime(110, now);
+          subOsc.frequency.exponentialRampToValueAtTime(22, now + 1.4);
+          subGain.gain.setValueAtTime(0.25, now);
+          subGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+          subOsc.connect(subGain);
+          subGain.connect(this.masterGain);
+          subOsc.start(now);
+          subOsc.stop(now + 1.45);
+
+          const bufferSize = this.ctx.sampleRate * 0.8;
+          const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const output = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+          const whiteNoise = this.ctx.createBufferSource();
+          whiteNoise.buffer = noiseBuffer;
+          const noiseFilter = this.ctx.createBiquadFilter();
+          noiseFilter.type = 'bandpass';
+          noiseFilter.frequency.setValueAtTime(900, now);
+          noiseFilter.frequency.exponentialRampToValueAtTime(220, now + 0.8);
+          noiseFilter.Q.setValueAtTime(3.0, now);
+
+          const noiseGain = this.ctx.createGain();
+          noiseGain.gain.setValueAtTime(0.12, now);
+          noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+
+          whiteNoise.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(this.masterGain);
+          whiteNoise.start(now);
+        } catch (e) {}
+      }
+
+      playIonBeam() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc1 = this.ctx.createOscillator();
+          const osc2 = this.ctx.createOscillator();
+          const filter = this.ctx.createBiquadFilter();
+          const gain = this.ctx.createGain();
+
+          osc1.type = 'triangle';
+          osc2.type = 'sawtooth';
+          osc1.frequency.setValueAtTime(880, now);
+          osc1.frequency.linearRampToValueAtTime(1760, now + 0.45);
+          osc2.frequency.setValueAtTime(440, now);
+          osc2.frequency.linearRampToValueAtTime(880, now + 0.45);
+
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(1400, now);
+          filter.Q.setValueAtTime(4.0, now);
+
+          gain.gain.setValueAtTime(0.09, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+
+          osc1.connect(filter);
+          osc2.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.masterGain);
+
+          osc1.start(now);
+          osc2.start(now);
+          osc1.stop(now + 0.52);
+          osc2.stop(now + 0.52);
+        } catch (e) {}
+      }
+
+      playHarpoonLaunch() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(1800, now + 0.18);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 0.24);
+        } catch (e) {}
+      }
+
+      playSnareImpact() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.setValueAtTime(1200, now + 0.04);
+          osc.frequency.setValueAtTime(600, now + 0.08);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 0.32);
+        } catch (e) {}
+      }
+
+      playAtmosphericBurn() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(750, now);
+          osc.frequency.linearRampToValueAtTime(120, now + 1.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 1.25);
+        } catch (e) {}
+      }
+
+      playRcsBurst() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(260, now);
+          osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } catch (e) {}
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        if (this.enabled) {
+          this.resumeContext().then(() => {
+            this.startDrone();
+            this.playGlassClick(1.2);
+          });
+        } else {
+          this.stopDrone();
+        }
+        return this.enabled;
+      }
+    }
+
+    const soundEngine = new SpaceSoundEngine();
+
+    /* ==========================================================================
+       2. THREE.JS 3D SCENE & CRISP EARTH GRAPHICS PIPELINE (Whitish Layer Removed)
+       ========================================================================== */
+    const container = document.getElementById('canvas-container');
+    const canvas = document.getElementById('orbit-canvas');
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x010206, 0.007);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1500);
+    camera.position.set(0, 0, 20);
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: !isMobileDevice,
+      alpha: true,
+      powerPreference: "high-performance"
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileDevice ? 1.5 : 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 5.8;
+    controls.maxDistance = 60;
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
+    controls.enabled = false;
+
+    // High Contrast Aerospace Lighting
+    const ambientLight = new THREE.AmbientLight(0x081528, 0.7);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffffff, 3.8);
+    sunLight.position.set(35, 18, 22);
+    scene.add(sunLight);
+
+    const deepSpaceFill = new THREE.DirectionalLight(0x02162e, 0.5);
+    deepSpaceFill.position.set(-35, -18, -22);
+    scene.add(deepSpaceFill);
+
+    /* --------------------------------------------------------------------------
+       Crisp Procedural Earth Map (No Milky Haze or Bleached Polar Caps)
+       -------------------------------------------------------------------------- */
+    function createProceduralEarthMaps() {
+      const w = isMobileDevice ? 1024 : 2048;
+      const h = isMobileDevice ? 512 : 1024;
+      const cvs = document.createElement('canvas');
+      cvs.width = w; cvs.height = h;
+      const ctx = cvs.getContext('2d');
+
+      // Vivid Deep Blue Ocean Gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#020b18');
+      grad.addColorStop(0.3, '#041d3b');
+      grad.addColorStop(0.5, '#072e5e');
+      grad.addColorStop(0.7, '#041d3b');
+      grad.addColorStop(1, '#020b18');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Distinct Continental Landmasses
+      const lands = [
+        { x: w * 0.27, y: h * 0.34, r: h * 0.20, c: '#1f5438' },
+        { x: w * 0.35, y: h * 0.65, r: h * 0.17, c: '#194931' },
+        { x: w * 0.52, y: h * 0.33, r: h * 0.13, c: '#27573d' },
+        { x: w * 0.54, y: h * 0.56, r: h * 0.22, c: '#846d45' },
+        { x: w * 0.71, y: h * 0.35, r: h * 0.29, c: '#2c563e' },
+        { x: w * 0.80, y: h * 0.70, r: h * 0.14, c: '#9c6239' },
+      ];
+
+      lands.forEach(l => {
+        ctx.fillStyle = 'rgba(0, 242, 254, 0.25)';
+        ctx.beginPath();
+        ctx.arc(l.x, l.y, l.r * 1.12, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = l.c;
+        ctx.beginPath();
+        ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Subtle, toned ice caps without huge white washout
+      ctx.fillStyle = 'rgba(215, 235, 255, 0.65)';
+      ctx.beginPath();
+      ctx.ellipse(w / 2, 25, w / 2, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(w / 2, h - 25, w / 2, 32, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    const textureLoader = new THREE.TextureLoader();
+    const proceduralDayTexture = createProceduralEarthMaps();
+
+    const earthRadius = 5.0;
+    const earthGeometry = new THREE.SphereGeometry(earthRadius, isMobileDevice ? 64 : 128, isMobileDevice ? 64 : 128);
+
+    // Earth material configured for high clarity, rich contrast, and no milky glaze
+    const earthMaterial = new THREE.MeshStandardMaterial({
+      map: proceduralDayTexture,
+      roughness: 0.45,
+      metalness: 0.1,
+      bumpScale: 0.05,
+      emissive: new THREE.Color(0xfff0aa),
+      emissiveIntensity: 0.35,
+      emissiveMap: null
+    });
+
+    const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+    scene.add(earth);
+
+    // High resolution maps with procedural fallback
+    textureLoader.load(
+      'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg',
+      (tex) => { 
+        earthMaterial.map = tex; 
+        earthMaterial.needsUpdate = true; 
+      },
+      undefined,
+      () => { 
+        earthMaterial.map = proceduralDayTexture; 
+        earthMaterial.needsUpdate = true; 
+      }
+    );
+
+    textureLoader.load(
+      'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg',
+      (tex) => { 
+        earthMaterial.emissiveMap = tex; 
+        earthMaterial.needsUpdate = true; 
+      }
+    );
+
+    // Ultra-subtle, crisp limb halo (replaces the foggy white wash with a razor-thin aerospace edge)
+    const atmosphereGeometry = new THREE.SphereGeometry(earthRadius * 1.025, isMobileDevice ? 48 : 80, isMobileDevice ? 48 : 80);
+    const atmosphereMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        sunPosition: { value: sunLight.position },
+        atmosphereColor: { value: new THREE.Color(0x00d9ff) }
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vWorldPosition;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vec4 worldPos = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPos.xyz;
+          gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 sunPosition;
+        uniform vec3 atmosphereColor;
+        varying vec3 vNormal;
+        varying vec3 vWorldPosition;
+
+        void main() {
+          vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
+          // Very steep fresnel curve so only the exact rim edge glows, keeping Earth totally clear
+          float fresnel = pow(1.0 - max(dot(viewDirection, vNormal), 0.0), 6.5);
+          vec3 sunDirection = normalize(sunPosition);
+          float sunDot = max(dot(vNormal, sunDirection), 0.0);
+          float alpha = fresnel * (0.25 + sunDot * 0.75);
+          gl_FragColor = vec4(atmosphereColor, alpha * 0.45);
+        }
+      `,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      transparent: true,
+      depthWrite: false
+    });
+    const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+    scene.add(atmosphere);
+
+    /* --------------------------------------------------------------------------
+       Dynamic Orbital Reference Rings & Vector Paths
+       -------------------------------------------------------------------------- */
+    function createOrbitRing(radius, color = 0x00f2fe, opacity = 0.25, rotX = Math.PI / 4, rotZ = 0) {
+      const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, 2 * Math.PI, false, 0);
+      const points = curve.getPoints(isMobileDevice ? 90 : 180);
+      const geom = new THREE.BufferGeometry().setFromPoints(points);
+      const mat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: opacity });
+      const ring = new THREE.Line(geom, mat);
+      ring.rotation.x = rotX;
+      ring.rotation.z = rotZ;
+      return ring;
+    }
+
+    const ringLEO = createOrbitRing(6.1, 0x00f2fe, 0.45, Math.PI / 3, 0.3);
+    const ringISS = createOrbitRing(5.6, 0x10b981, 0.7, 0.9, -0.4);
+    const ringGEO = createOrbitRing(12.5, 0xef4444, 0.3, Math.PI / 2.2, 0);
+    scene.add(ringLEO);
+    scene.add(ringISS);
+    scene.add(ringGEO);
+
+    const projectedOrbitGeometry = new THREE.BufferGeometry();
+    const projectedOrbitMaterial = new THREE.LineBasicMaterial({ color: 0x00f2fe, linewidth: 2, transparent: true, opacity: 0.9 });
+    const projectedOrbitLine = new THREE.Line(projectedOrbitGeometry, projectedOrbitMaterial);
+    scene.add(projectedOrbitLine);
+
+    /* --------------------------------------------------------------------------
+       Spacecraft Models Container
+       -------------------------------------------------------------------------- */
+    const satGroup = new THREE.Group();
+    scene.add(satGroup);
+
+    const matSilverMLI = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.95, roughness: 0.22 });
+    const matGoldFoil = new THREE.MeshStandardMaterial({ color: 0xdfa134, metalness: 0.88, roughness: 0.28 });
+    const matSolarPanel = new THREE.MeshStandardMaterial({ color: 0x013a70, metalness: 0.85, roughness: 0.12, emissive: 0x0284c7, emissiveIntensity: 0.35 });
+    const matDarkTruss = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.4 });
+    const matRadiator = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.6, roughness: 0.25 });
+
+    const craftModels = {
+      iss: new THREE.Group(),
+      hubble: new THREE.Group(),
+      tiangong: new THREE.Group(),
+      envisat: new THREE.Group()
+    };
+
+    // ISS 3D Model
+    (function buildISS() {
+      const g = craftModels.iss;
+      const coreModule = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.75, 16), matSilverMLI);
+      coreModule.rotation.z = Math.PI / 2;
+      g.add(coreModule);
+
+      const aftZvezda = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.11, 0.45, 16), matSilverMLI);
+      aftZvezda.rotation.z = Math.PI / 2;
+      aftZvezda.position.x = -0.55;
+      g.add(aftZvezda);
+
+      const destinyLab = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.5, 16), matSilverMLI);
+      destinyLab.rotation.z = Math.PI / 2;
+      destinyLab.position.x = 0.55;
+      g.add(destinyLab);
+
+      const cupola = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0x00f2fe, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.85 })
+      );
+      cupola.position.set(0.18, -0.12, 0);
+      cupola.rotation.x = Math.PI;
+      g.add(cupola);
+
+      const mainTruss = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.045, 0.045), matDarkTruss);
+      mainTruss.position.set(0, 0.09, 0);
+      g.add(mainTruss);
+
+      for (const rx of [-0.6, 0.6]) {
+        const rad = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.015, 0.42), matRadiator);
+        rad.position.set(rx, 0.16, 0.22);
+        g.add(rad);
+      }
+
+      [-1.15, -0.9, 0.9, 1.15].forEach(wx => {
+        const wPort = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.012, 0.55), matSolarPanel);
+        wPort.position.set(wx, 0.1, 0.38);
+        g.add(wPort);
+
+        const wStar = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.012, 0.55), matSolarPanel);
+        wStar.position.set(wx, 0.1, -0.38);
+        g.add(wStar);
+      });
+
+      const strobeRed = new THREE.PointLight(0xef4444, 2.0, 4.0);
+      strobeRed.position.set(-1.26, 0.1, 0.65);
+      g.add(strobeRed);
+
+      const strobeGreen = new THREE.PointLight(0x10b981, 2.0, 4.0);
+      strobeGreen.position.set(1.26, 0.1, -0.65);
+      g.add(strobeGreen);
+
+      g.userData = { strobeRed, strobeGreen };
+    })();
+
+    // Hubble Space Telescope
+    (function buildHubble() {
+      const g = craftModels.hubble;
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.21, 0.95, 24), matSilverMLI);
+      g.add(tube);
+
+      const mirrorCavity = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 24), new THREE.MeshBasicMaterial({ color: 0x050508 }));
+      mirrorCavity.position.y = 0.45;
+      g.add(mirrorCavity);
+
+      const apertureDoor = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.02, 16), matSilverMLI);
+      apertureDoor.position.set(0.15, 0.52, 0);
+      apertureDoor.rotation.z = -Math.PI / 3.5;
+      g.add(apertureDoor);
+
+      const aftBay = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.32, 24), matSilverMLI);
+      aftBay.position.y = -0.42;
+      g.add(aftBay);
+
+      for (const sign of [-1, 1]) {
+        const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.28, 8), matDarkTruss);
+        boom.position.set(sign * 0.28, -0.15, 0);
+        boom.rotation.z = sign * (Math.PI / 2.8);
+        g.add(boom);
+
+        const dish = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2.5), matSilverMLI);
+        dish.position.set(sign * 0.42, -0.22, 0);
+        dish.rotation.z = -sign * (Math.PI / 2);
+        g.add(dish);
+
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.012, 0.24), matSolarPanel);
+        wing.position.set(0, 0, sign * 0.45);
+        g.add(wing);
+      }
+    })();
+
+    // Tiangong Space Station
+    (function buildTiangong() {
+      const g = craftModels.tiangong;
+      const tianhe = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.85, 20), matSilverMLI);
+      g.add(tianhe);
+
+      const dockingHub = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), matSilverMLI);
+      dockingHub.position.y = 0.44;
+      g.add(dockingHub);
+
+      for (const sign of [-1, 1]) {
+        const labModule = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.62, 16), matSilverMLI);
+        labModule.rotation.z = Math.PI / 2;
+        labModule.position.set(sign * 0.42, 0.44, 0);
+        g.add(labModule);
+
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.012, 0.72), matSolarPanel);
+        wing.position.set(sign * 0.88, 0.44, 0);
+        g.add(wing);
+      }
+    })();
+
+    // Envisat Derelict Satellite
+    (function buildEnvisat() {
+      const g = craftModels.envisat;
+      const bus = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.95, 0.42), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.75, roughness: 0.45 }));
+      g.add(bus);
+
+      const asarPanel = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.75, 0.28), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8, roughness: 0.35 }));
+      asarPanel.position.set(0.23, 0, 0);
+      g.add(asarPanel);
+
+      const singleWing = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.015, 1.1), matSolarPanel);
+      singleWing.position.set(0, 0.22, -0.8);
+      g.add(singleWing);
+
+      const hazardLight = new THREE.PointLight(0xef4444, 1.4, 3.0);
+      hazardLight.position.set(0, 0.5, 0);
+      g.add(hazardLight);
+    })();
+
+    Object.values(craftModels).forEach(m => satGroup.add(m));
+
+    const strobeBeacon = new THREE.PointLight(0x00f2fe, 2.2, 5);
+    satGroup.add(strobeBeacon);
+
+    const satHalo = new THREE.Mesh(
+      new THREE.RingGeometry(0.42, 0.54, 32),
+      new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+    );
+    satHalo.rotation.x = Math.PI / 2;
+    satGroup.add(satHalo);
+
+    // Starlink Constellation Train
+    const starlinkTrainGroup = new THREE.Group();
+    const starlinkNodes = [];
+    const STARLINK_COUNT = isMobileDevice ? 12 : 20;
+
+    for (let s = 0; s < STARLINK_COUNT; s++) {
+      const nodeGroup = new THREE.Group();
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.02, 0.08), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 }));
+      nodeGroup.add(chassis);
+      const array = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.008, 0.075), matSolarPanel);
+      array.position.x = 0.21;
+      nodeGroup.add(array);
+      starlinkTrainGroup.add(nodeGroup);
+      starlinkNodes.push(nodeGroup);
+    }
+    starlinkTrainGroup.visible = false;
+    scene.add(starlinkTrainGroup);
+
+    /* --------------------------------------------------------------------------
+       Dynamic Color-Coded Debris Regimes (LEO, MEO, GEO)
+       -------------------------------------------------------------------------- */
+    function getCircleTexture() {
+      const size = 64;
+      const cvs = document.createElement('canvas');
+      cvs.width = size; cvs.height = size;
+      const ctx = cvs.getContext('2d');
+      const center = size / 2;
+      const radius = size / 2 - 1;
+
+      const gradient = ctx.createRadialGradient(center, center, 0, center, center, radius);
+      gradient.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+      gradient.addColorStop(0.25, 'rgba(255, 255, 255, 0.85)');
+      gradient.addColorStop(0.65, 'rgba(255, 255, 255, 0.35)');
+      gradient.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(center, center, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      const texture = new THREE.CanvasTexture(cvs);
+      texture.needsUpdate = true;
+      return texture;
+    }
+
+    const circleDotTexture = getCircleTexture();
+    const DEBRIS_COUNT = isMobileDevice ? 4000 : 7500;
+    const debrisGeometry = new THREE.BufferGeometry();
+    const debrisPositions = new Float32Array(DEBRIS_COUNT * 3);
+    const debrisColors = new Float32Array(DEBRIS_COUNT * 3);
+    const debrisVelocities = [];
+
+    const colLEO = new THREE.Color(0x00f2fe);
+    const colMEO = new THREE.Color(0xf59e0b);
+    const colGEO = new THREE.Color(0xef4444);
+    const colDebrisGrey = new THREE.Color(0x94a3b8);
+
+    for (let i = 0; i < DEBRIS_COUNT; i++) {
+      const rand = Math.random();
+      let radius, col, isLEO = false;
+
+      if (rand < 0.75) {
+        radius = 5.4 + Math.random() * 2.1;
+        col = Math.random() < 0.7 ? colLEO : colDebrisGrey;
+        isLEO = true;
+      } else if (rand < 0.90) {
+        radius = 8.0 + Math.random() * 2.5;
+        col = colMEO;
+      } else {
+        radius = 11.5 + Math.random() * 2.0;
+        col = colGEO;
+      }
+
+      const theta = Math.random() * Math.PI * 2;
+      const phi = (Math.random() - 0.5) * (isLEO ? Math.PI * 0.92 : Math.PI * 0.35);
+
+      const x = radius * Math.cos(phi) * Math.cos(theta);
+      const y = radius * Math.sin(phi);
+      const z = radius * Math.cos(phi) * Math.sin(theta);
+
+      debrisPositions[i * 3] = x;
+      debrisPositions[i * 3 + 1] = y;
+      debrisPositions[i * 3 + 2] = z;
+
+      debrisColors[i * 3] = col.r;
+      debrisColors[i * 3 + 1] = col.g;
+      debrisColors[i * 3 + 2] = col.b;
+
+      debrisVelocities.push({
+        orbitSpeed: (0.0012 + Math.random() * 0.0028) * (isLEO ? 1.0 : 0.45),
+        radius: radius,
+        theta: theta,
+        phi: phi,
+        inclinationSpeed: (Math.random() - 0.5) * 0.00035,
+        isCaptured: false
+      });
+    }
+
+    debrisGeometry.setAttribute('position', new THREE.BufferAttribute(debrisPositions, 3));
+    debrisGeometry.setAttribute('color', new THREE.BufferAttribute(debrisColors, 3));
+
+    const debrisMaterial = new THREE.PointsMaterial({
+      size: isMobileDevice ? 0.28 : 0.22,
+      map: circleDotTexture,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true
+    });
+
+    const debrisCloud = new THREE.Points(debrisGeometry, debrisMaterial);
+    scene.add(debrisCloud);
+
+    // Starfield Background
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = isMobileDevice ? 2500 : 4500;
+    const starPos = new Float32Array(starCount * 3);
+    const starCols = new Float32Array(starCount * 3);
+
+    for (let s = 0; s < starCount; s++) {
+      const idx = s * 3;
+      starPos[idx] = (Math.random() - 0.5) * 600;
+      starPos[idx + 1] = (Math.random() - 0.5) * 600;
+      starPos[idx + 2] = (Math.random() - 0.5) * 600;
+      const starType = Math.random();
+      if (starType > 0.85) {
+        starCols[idx] = 0.65; starCols[idx + 1] = 0.85; starCols[idx + 2] = 1.0;
+      } else if (starType > 0.3) {
+        starCols[idx] = 0.98; starCols[idx + 1] = 0.98; starCols[idx + 2] = 1.0;
+      } else {
+        starCols[idx] = 1.0; starCols[idx + 1] = 0.85; starCols[idx + 2] = 0.65;
+      }
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    starGeo.setAttribute('color', new THREE.BufferAttribute(starCols, 3));
+
+    const starMat = new THREE.PointsMaterial({ size: 0.55, vertexColors: true, transparent: true, opacity: 0.75 });
+    scene.add(new THREE.Points(starGeo, starMat));
+
+    /* ==========================================================================
+       3. DEBRIS HUNTER GAME ENGINE & ORBITAL TUG INTERCEPTOR CRAFT
+       ========================================================================== */
+    const hunterTugGroup = new THREE.Group();
+    hunterTugGroup.visible = false;
+    scene.add(hunterTugGroup);
+
+    (function buildHunterTug() {
+      const chassis = new THREE.Mesh(
+        new THREE.ConeGeometry(0.24, 0.8, 4),
+        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.25 })
+      );
+      chassis.rotation.x = Math.PI / 2;
+      hunterTugGroup.add(chassis);
+
+      const canopy = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.95, roughness: 0.1, transparent: true, opacity: 0.9 })
+      );
+      canopy.position.set(0, 0.08, 0.12);
+      hunterTugGroup.add(canopy);
+
+      for (const sign of [-1, 1]) {
+        const armBase = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.35), matDarkTruss);
+        armBase.position.set(sign * 0.18, 0, 0.35);
+        hunterTugGroup.add(armBase);
+
+        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 6), matSilverMLI);
+        claw.position.set(sign * 0.18, 0, 0.55);
+        claw.rotation.x = Math.PI / 2;
+        hunterTugGroup.add(claw);
+
+        const laserBeacon = new THREE.PointLight(0x00f2fe, 1.5, 2.5);
+        laserBeacon.position.set(sign * 0.18, 0, 0.58);
+        hunterTugGroup.add(laserBeacon);
+      }
+
+      for (const sign of [-1, 1]) {
+        const engineBell = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 0.16, 12), matDarkTruss);
+        engineBell.position.set(sign * 0.14, 0, -0.44);
+        engineBell.rotation.x = Math.PI / 2;
+        hunterTugGroup.add(engineBell);
+
+        const ionCone = new THREE.Mesh(
+          new THREE.ConeGeometry(0.055, 0.35, 8),
+          new THREE.MeshBasicMaterial({ color: 0x00f2fe, transparent: true, opacity: 0.85 })
+        );
+        ionCone.position.set(sign * 0.14, 0, -0.65);
+        ionCone.rotation.x = -Math.PI / 2;
+        hunterTugGroup.add(ionCone);
+      }
+
+      for (const sign of [-1, 1]) {
+        const rcs = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.03), matSilverMLI);
+        rcs.position.set(sign * 0.24, 0.06, 0);
+        hunterTugGroup.add(rcs);
+      }
+    })();
+
+    const harpoonMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.35, 8),
+      new THREE.MeshStandardMaterial({ color: 0x00f2fe, emissive: 0x00f2fe, emissiveIntensity: 0.8 })
+    );
+    harpoonMesh.rotation.x = Math.PI / 2;
+    harpoonMesh.visible = false;
+    scene.add(harpoonMesh);
+
+    const tetherGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+    const tetherLine = new THREE.Line(tetherGeo, new THREE.LineBasicMaterial({ color: 0x00f2fe, transparent: true, opacity: 0.85 }));
+    tetherLine.visible = false;
+    scene.add(tetherLine);
+
+    const capturedDebrisMesh = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.24),
+      new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.8, roughness: 0.35, emissive: 0xff4400, emissiveIntensity: 0 })
+    );
+    capturedDebrisMesh.visible = false;
+    scene.add(capturedDebrisMesh);
+
+    /* --------------------------------------------------------------------------
+       Game State & Flight Control Logic
+       -------------------------------------------------------------------------- */
+    let isGameMode = false;
+    let hunterFuel = 100.0;
+    let scoreNeutralized = 0;
+    let scoreMassKg = 0;
+
+    const tugFlight = {
+      position: new THREE.Vector3(0, 2.5, 7.2),
+      velocity: new THREE.Vector3(0, 0, 0),
+      rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
+      speed: 0,
+      pitchRate: 0,
+      yawRate: 0,
+      rollRate: 0,
+      boostActive: false
+    };
+
+    const harpoonState = {
+      fired: false,
+      position: new THREE.Vector3(),
+      direction: new THREE.Vector3(),
+      flightDist: 0,
+      maxRange: 5.5,
+      speed: 16.0,
+      hasTarget: false,
+      targetIndex: -1,
+      targetDebrisPos: new THREE.Vector3(),
+      isDeorbiting: false,
+      deorbitTimer: 0,
+      cooldown: 0
+    };
+
+    const keysPressed = {};
+    window.addEventListener('keydown', (e) => {
+      keysPressed[e.code] = true;
+      if (e.code === 'KeyW' || e.code === 'ArrowUp' || e.code === 'KeyS' || e.code === 'ArrowDown') {
+        soundEngine.playRcsBurst();
+      }
+      if (e.code === 'Space' && isGameMode) {
+        fireMagneticHarpoon();
+      }
+      if (e.code === 'Escape' && isGameMode) {
+        exitDebrisHunterMode();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      keysPressed[e.code] = false;
+    });
+
+    function attachTouchHoldListener(elemId, keyCode) {
+      const el = document.getElementById(elemId);
+      if (!el) return;
+      const start = (e) => {
+        e.preventDefault();
+        keysPressed[keyCode] = true;
+        soundEngine.playRcsBurst();
+      };
+      const end = (e) => {
+        e.preventDefault();
+        keysPressed[keyCode] = false;
+      };
+      el.addEventListener('touchstart', start, { passive: false });
+      el.addEventListener('touchend', end, { passive: false });
+      el.addEventListener('mousedown', start);
+      el.addEventListener('mouseup', end);
+      el.addEventListener('mouseleave', end);
+    }
+
+    attachTouchHoldListener('dpad-up', 'KeyW');
+    attachTouchHoldListener('dpad-down', 'KeyS');
+    attachTouchHoldListener('dpad-left', 'KeyA');
+    attachTouchHoldListener('dpad-right', 'KeyD');
+
+    const touchBtnBoost = document.getElementById('touch-btn-boost');
+    const touchBtnFire = document.getElementById('touch-btn-fire');
+    if (touchBtnBoost) {
+      const boostStart = (e) => { e.preventDefault(); keysPressed['ShiftLeft'] = true; };
+      const boostEnd = (e) => { e.preventDefault(); keysPressed['ShiftLeft'] = false; };
+      touchBtnBoost.addEventListener('touchstart', boostStart, { passive: false });
+      touchBtnBoost.addEventListener('touchend', boostEnd, { passive: false });
+      touchBtnBoost.addEventListener('mousedown', boostStart);
+      touchBtnBoost.addEventListener('mouseup', boostEnd);
+    }
+    if (touchBtnFire) {
+      const fireHandler = (e) => {
+        e.preventDefault();
+        fireMagneticHarpoon();
+      };
+      touchBtnFire.addEventListener('touchstart', fireHandler, { passive: false });
+      touchBtnFire.addEventListener('mousedown', fireHandler);
+    }
+
+    /* Enter & Exit Game Mode */
+    const gameFlightHud = document.getElementById('game-flight-hud');
+    const btnEnterGame = document.getElementById('btn-enter-game');
+    const btnExitGame = document.getElementById('btn-exit-game');
+    const gameSummaryModal = document.getElementById('game-summary-modal');
+    const btnRestartMission = document.getElementById('btn-restart-mission');
+
+    function enterDebrisHunterMode() {
+      if (isGameMode) return;
+      isGameMode = true;
+      isInspectMode = false;
+      controls.enabled = false;
+      cameraLockedOnTarget = false;
+
+      tugFlight.position.set(0, 2.5, 7.2);
+      tugFlight.velocity.set(0, 0, 0);
+      tugFlight.rotation.set(0, 0, 0);
+      hunterTugGroup.position.copy(tugFlight.position);
+      hunterTugGroup.visible = true;
+
+      hunterFuel = 100.0;
+      scoreNeutralized = 0;
+      scoreMassKg = 0;
+      updateGameGauges();
+
+      soundEngine.playLockChime(true);
+      soundEngine.playBeep(980, 0.2, 'sawtooth');
+
+      hudElementsToHide.forEach(el => {
+        if (el) {
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+        }
+      });
+
+      gameFlightHud.classList.remove('opacity-0', 'pointer-events-none');
+      gameFlightHud.classList.add('opacity-100', 'pointer-events-auto');
+    }
+
+    function exitDebrisHunterMode() {
+      if (!isGameMode) return;
+      isGameMode = false;
+      hunterTugGroup.visible = false;
+      harpoonMesh.visible = false;
+      tetherLine.visible = false;
+      capturedDebrisMesh.visible = false;
+      harpoonState.fired = false;
+      harpoonState.hasTarget = false;
+
+      gameFlightHud.classList.add('opacity-0', 'pointer-events-none');
+      gameFlightHud.classList.remove('opacity-100', 'pointer-events-auto');
+
+      document.getElementById('modal-score-count').innerText = `${scoreNeutralized} OBJECTS`;
+      document.getElementById('modal-score-mass').innerText = `${scoreMassKg.toLocaleString()} kg`;
+      gameSummaryModal.classList.remove('opacity-0', 'pointer-events-none');
+      gameSummaryModal.classList.add('opacity-100', 'pointer-events-auto');
+
+      soundEngine.playLockChime(false);
+    }
+
+    btnEnterGame.addEventListener('click', enterDebrisHunterMode);
+    btnExitGame.addEventListener('click', exitDebrisHunterMode);
+
+    btnRestartMission.addEventListener('click', () => {
+      gameSummaryModal.classList.add('opacity-0', 'pointer-events-none');
+      gameSummaryModal.classList.remove('opacity-100', 'pointer-events-auto');
+
+      hudElementsToHide.forEach(el => {
+        if (el) {
+          el.style.opacity = '1';
+          el.style.pointerEvents = '';
+        }
+      });
+      soundEngine.playGlassClick(1.0);
+    });
+
+    function fireMagneticHarpoon() {
+      if (!isGameMode || harpoonState.fired || harpoonState.cooldown > 0) return;
+
+      harpoonState.fired = true;
+      harpoonState.flightDist = 0;
+      harpoonState.position.copy(hunterTugGroup.position);
+      
+      const forward = new THREE.Vector3(0, 0, 1).applyEuler(hunterTugGroup.rotation).normalize();
+      harpoonState.direction.copy(forward);
+
+      harpoonMesh.position.copy(harpoonState.position);
+      harpoonMesh.quaternion.copy(hunterTugGroup.quaternion);
+      harpoonMesh.visible = true;
+
+      tetherLine.visible = true;
+      soundEngine.playHarpoonLaunch();
+    }
+
+    function updateGameGauges() {
+      document.getElementById('game-score-count').innerText = scoreNeutralized;
+      document.getElementById('game-score-mass').innerText = `${scoreMassKg.toLocaleString()} kg`;
+      document.getElementById('game-fuel-percent').innerText = `${Math.max(0, Math.round(hunterFuel))}%`;
+      document.getElementById('game-fuel-bar').style.width = `${Math.max(0, Math.round(hunterFuel))}%`;
+    }
+
+    /* ==========================================================================
+       4. SCROLL-DRIVEN STAGE CHOREOGRAPHY
+       ========================================================================== */
+    const cameraStages = [
+      { camPos: new THREE.Vector3(0, 0, isMobileDevice ? 24 : 20), lookAt: new THREE.Vector3(0, 0, 0), debrisSize: isMobileDevice ? 0.28 : 0.22 },
+      { camPos: new THREE.Vector3(9, 3, isMobileDevice ? 12 : 10), lookAt: new THREE.Vector3(1, 0, 0), debrisSize: isMobileDevice ? 0.32 : 0.28 },
+      { camPos: new THREE.Vector3(4.2, 3.8, isMobileDevice ? 6.2 : 5.0), lookAt: new THREE.Vector3(3.2, 2.5, 3.8), debrisSize: 0.26 },
+      { camPos: new THREE.Vector3(-8, 5, isMobileDevice ? 10 : 8), lookAt: new THREE.Vector3(0, 0, 0), debrisSize: isMobileDevice ? 0.38 : 0.36 },
+      { camPos: new THREE.Vector3(0, -6, isMobileDevice ? 16 : 14), lookAt: new THREE.Vector3(0, 0, 0), debrisSize: isMobileDevice ? 0.28 : 0.22 }
+    ];
+
+    let currentProgress = 0;
+    let targetProgress = 0;
+    let isInspectMode = false;
+    let isBriefingOpen = false;
+
+    const heroDockedPanel = document.getElementById('hero-docked-panel');
+    const globeWelcomePill = document.getElementById('globe-welcome-pill');
+
+    function showBriefingPanel() {
+      isBriefingOpen = true;
+      if (heroDockedPanel) {
+        heroDockedPanel.classList.remove('opacity-0', 'translate-y-8', 'scale-95', 'pointer-events-none');
+        heroDockedPanel.classList.add('opacity-100', 'translate-y-0', 'scale-100', 'pointer-events-auto');
+      }
+      if (globeWelcomePill) {
+        globeWelcomePill.classList.add('opacity-0', 'translate-y-8', 'pointer-events-none');
+      }
+    }
+
+    function hideBriefingPanel() {
+      isBriefingOpen = false;
+      if (heroDockedPanel) {
+        heroDockedPanel.classList.add('opacity-0', 'translate-y-8', 'scale-95', 'pointer-events-none');
+        heroDockedPanel.classList.remove('opacity-100', 'translate-y-0', 'scale-100', 'pointer-events-auto');
+      }
+      if (globeWelcomePill) {
+        globeWelcomePill.classList.remove('opacity-0', 'translate-y-8', 'pointer-events-none');
+      }
+    }
+
+    window.addEventListener('scroll', () => {
+      if (isGameMode) return;
+      const scrollY = window.scrollY;
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      targetProgress = Math.max(0, Math.min(1, scrollY / (totalHeight || 1)));
+
+      if (!isInspectMode) {
+        if (scrollY > 40) {
+          showBriefingPanel();
+        } else if (!isBriefingOpen) {
+          hideBriefingPanel();
+        }
+      }
+    }, { passive: true });
+
+    window.scrollToSection = function(stageIndex) {
+      if (isInspectMode) toggleInspectMode();
+      showBriefingPanel();
+      const targetEl = document.getElementById(`section-${stageIndex}`) || document.getElementById('section-1-threat');
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth' });
+        soundEngine.playBeep(650, 0.06);
+      }
+    };
+
+    document.querySelectorAll('.stage-nav-item').forEach(button => {
+      button.addEventListener('click', () => {
+        const stage = parseInt(button.getAttribute('data-stage'));
+        scrollToSection(stage);
+      });
+    });
+
+    /* ==========================================================================
+       5. LIVE TLE / SGP4 SATELLITE ENGINE
+       ========================================================================== */
+    const SATELLITE_CATALOG = {
+      "25544": {
+        name: "ISS (ZARYA)",
+        norad: "25544",
+        origin: "MULTINATIONAL // 1998",
+        desc: "The International Space Station: a multi-national orbital research laboratory travelling at 7.66 km/s.",
+        color: 0x10b981,
+        fallbackTLE: {
+          line1: "1 25544U 98067A   26111.51241898  .00014280  00000+0  25849-3 0  9993",
+          line2: "2 25544  51.6418 214.3920 0004521  82.1154 278.0245 15.49842180449528"
+        }
+      },
+      "20580": {
+        name: "HUBBLE (HST)",
+        norad: "20580",
+        origin: "NASA / ESA // 1990",
+        desc: "High-aperture space telescope in circular orbit at 535 km.",
+        color: 0x00f2fe,
+        fallbackTLE: {
+          line1: "1 20580U 90037B   26111.45892112  .00001524  00000+0  74125-4 0  9997",
+          line2: "2 20580  28.4695  94.2185 0002874  65.1842 294.9482 15.09341250821941"
+        }
+      },
+      "48274": {
+        name: "TIANGONG (CSS)",
+        norad: "48274",
+        origin: "CHINA // 2021",
+        desc: "Modular space observatory orbiting between 340 and 450 km.",
+        color: 0xf59e0b,
+        fallbackTLE: {
+          line1: "1 48274U 21035A   26111.58129014  .00021584  00000+0  23512-3 0  9991",
+          line2: "2 48274  41.4721 168.4521 0003814 112.5481 247.5812 15.61482012174291"
+        }
+      },
+      "27386": {
+        name: "ENVISAT (DERELICT)",
+        norad: "27386",
+        origin: "ESA // 2002",
+        desc: "8,200 kg inactive spacecraft stranded at 770 km altitude.",
+        color: 0xef4444,
+        fallbackTLE: {
+          line1: "1 27386U 02009A   26111.42851920  .00000114  00000+0  62481-4 0  9994",
+          line2: "2 27386  98.3982 142.1852 0001154  89.4125 270.7241 14.38210940178491"
+        }
+      },
+      "starlink-cluster": {
+        name: "STARLINK TRAIN",
+        norad: "CLUSTER",
+        origin: "SPACEX // LEO BUS",
+        desc: "Phased mega-constellation train in circular 550 km orbit.",
+        color: 0x00f2fe,
+        fallbackTLE: {
+          line1: "1 58210U 23165A   26111.50000000  .00008912  00000+0  58412-3 0  9990",
+          line2: "2 58210  43.0012 180.2014 0001850  45.1820 314.9210 15.34000000089201"
+        }
+      }
+    };
+
+    let activeTargetId = "25544";
+    let activeSatrec = null;
+    let cameraLockedOnTarget = false;
+    let currentSatWorldPos = new THREE.Vector3(5.7, 0, 0);
+
+    function eciToSceneVector(eciKm) {
+      const earthRadiusKm = 6371.0;
+      const scale = earthRadius / earthRadiusKm;
+      return new THREE.Vector3(eciKm.x * scale, eciKm.z * scale, -eciKm.y * scale);
+    }
+
+    function updateProjectedOrbitPath(satrec) {
+      if (!satrec || activeTargetId === 'starlink-cluster') {
+        projectedOrbitLine.visible = false;
+        return;
+      }
+      projectedOrbitLine.visible = true;
+
+      const orbitPoints = [];
+      const now = new Date();
+      const totalSteps = isMobileDevice ? 60 : 120;
+      const stepMinutes = 95 / totalSteps;
+
+      for (let i = 0; i <= totalSteps; i++) {
+        const simTime = new Date(now.getTime() + i * stepMinutes * 60000);
+        const prop = satellite.propagate(satrec, simTime);
+        if (prop && prop.position) {
+          orbitPoints.push(eciToSceneVector(prop.position));
+        }
+      }
+
+      if (orbitPoints.length > 2) {
+        projectedOrbitGeometry.setFromPoints(orbitPoints);
+        projectedOrbitGeometry.attributes.position.needsUpdate = true;
+      }
+    }
+
+    async function fetchLiveSatelliteTLE(noradId) {
+      const startTime = performance.now();
+      const targetMeta = SATELLITE_CATALOG[noradId];
+      if (!targetMeta) return;
+
+      const badge = document.getElementById('badge-feed');
+      const latencyEl = document.getElementById('api-latency');
+      const propagatorStatus = document.getElementById('propagator-status');
+
+      if (noradId === "starlink-cluster") {
+        activeSatrec = satellite.twoline2satrec(targetMeta.fallbackTLE.line1, targetMeta.fallbackTLE.line2);
+        starlinkTrainGroup.visible = true;
+        satGroup.visible = false;
+        projectedOrbitLine.visible = false;
+        if (badge) badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>CLUSTER';
+        if (latencyEl) latencyEl.innerText = "LOCAL";
+        if (propagatorStatus) propagatorStatus.innerText = "CLUSTER";
+        updateProjectedOrbitPath(activeSatrec);
+        return;
+      } else {
+        starlinkTrainGroup.visible = false;
+        satGroup.visible = true;
+      }
+
+      try {
+        if (badge) badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>POLLING...';
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+        const res = await fetch(`https://tle.ivanstanojevic.me/api/tle/${noradId}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        if (data && data.line1 && data.line2) {
+          activeSatrec = satellite.twoline2satrec(data.line1, data.line2);
+          const elapsed = Math.round(performance.now() - startTime);
+          if (latencyEl) latencyEl.innerText = `${elapsed} ms`;
+          if (badge) badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>LIVE';
+          if (propagatorStatus) propagatorStatus.innerText = "SGP4 SYNC";
+        } else {
+          throw new Error("Invalid TLE");
+        }
+      } catch (err) {
+        activeSatrec = satellite.twoline2satrec(targetMeta.fallbackTLE.line1, targetMeta.fallbackTLE.line2);
+        if (latencyEl) latencyEl.innerText = "CACHED";
+        if (badge) badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>CACHED';
+        if (propagatorStatus) propagatorStatus.innerText = "OFFLINE";
+      }
+
+      updateProjectedOrbitPath(activeSatrec);
+    }
+
+    function selectSatelliteTarget(noradId) {
+      if (!SATELLITE_CATALOG[noradId]) return;
+      activeTargetId = noradId;
+      const meta = SATELLITE_CATALOG[noradId];
+
+      soundEngine.playTelemetryDataStream();
+
+      document.querySelectorAll('.sat-selector-btn').forEach(btn => {
+        if (btn.getAttribute('data-norad') === noradId) {
+          btn.className = "sat-selector-btn touch-btn px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-medium transition whitespace-nowrap bg-cyan-500/20 border border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(0,242,254,0.35)]";
+        } else {
+          btn.className = "sat-selector-btn touch-btn px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-medium transition whitespace-nowrap bg-slate-900/60 border border-white/10 hover:border-cyan-400/40 text-slate-300 hover:text-cyan-200";
+        }
+      });
+
+      const headerTarget = document.getElementById('header-target-name');
+      if (headerTarget) headerTarget.innerText = meta.name;
+      
+      document.getElementById('target-title-prefix').innerText = `TARGET LOCK // ${meta.name}`;
+      document.getElementById('target-title-name').innerText = `${meta.name} Telemetry`;
+      document.getElementById('target-norad').innerText = meta.norad;
+      document.getElementById('target-description').innerText = meta.desc;
+      document.getElementById('tel-origin').innerText = meta.origin;
+
+      satHalo.material.color.setHex(meta.color);
+      projectedOrbitMaterial.color.setHex(meta.color);
+
+      craftModels.iss.visible = (noradId === "25544");
+      craftModels.hubble.visible = (noradId === "20580");
+      craftModels.tiangong.visible = (noradId === "48274");
+      craftModels.envisat.visible = (noradId === "27386");
+
+      fetchLiveSatelliteTLE(noradId);
+    }
+
+    document.querySelectorAll('.sat-selector-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectSatelliteTarget(btn.getAttribute('data-norad'));
+      });
+    });
+
+    // Tracking mode HUD toggle
+    const btnHighlight = document.getElementById('btn-highlight-satellite');
+    const highlightText = document.getElementById('btn-highlight-text');
+    const trackingHudOverlay = document.getElementById('tracking-hud-overlay');
+    const btnExitTracking = document.getElementById('btn-exit-tracking');
+    const trackOverlayName = document.getElementById('track-overlay-name');
+    const trackOverlayCoords = document.getElementById('track-overlay-coords');
+
+    const hudElementsToHide = [
+      document.getElementById('main-header'),
+      document.getElementById('main-footer'),
+      document.getElementById('stage-scrubber'),
+      document.getElementById('constellation-bar'),
+      document.getElementById('story-container'),
+      document.getElementById('globe-welcome-pill')
+    ];
+
+    function setTrackingMode(enabled) {
+      cameraLockedOnTarget = enabled;
+      soundEngine.playLockChime(enabled);
+
+      hudElementsToHide.forEach(el => {
+        if (!el) return;
+        if (enabled) {
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+        } else {
+          el.style.opacity = '1';
+          el.style.pointerEvents = '';
+        }
+      });
+
+      if (enabled) {
+        btnHighlight.classList.remove('bg-cyan-500/20', 'text-cyan-200');
+        btnHighlight.classList.add('bg-cyan-400', 'text-slate-950', 'font-bold');
+        highlightText.innerText = "RELEASE LOCK";
+        satHalo.scale.set(3, 3, 3);
+        setTimeout(() => satHalo.scale.set(1, 1, 1), 600);
+
+        const meta = SATELLITE_CATALOG[activeTargetId] || { name: "ORBITAL ASSET" };
+        trackOverlayName.innerText = meta.name;
+        trackingHudOverlay.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
+        trackingHudOverlay.classList.add('opacity-100', 'pointer-events-auto', 'translate-y-0');
+      } else {
+        btnHighlight.classList.add('bg-cyan-500/20', 'text-cyan-200');
+        btnHighlight.classList.remove('bg-cyan-400', 'text-slate-950', 'font-bold');
+        highlightText.innerText = "LOCK CAMERA";
+
+        trackingHudOverlay.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
+        trackingHudOverlay.classList.remove('opacity-100', 'pointer-events-auto', 'translate-y-0');
+      }
+    }
+
+    btnHighlight.addEventListener('click', () => {
+      setTrackingMode(!cameraLockedOnTarget);
+    });
+
+    if (btnExitTracking) {
+      btnExitTracking.addEventListener('click', () => {
+        setTrackingMode(false);
+      });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && cameraLockedOnTarget) {
+        setTrackingMode(false);
+      }
+    });
+
+    // Kessler Cascade Trigger
+    let isCascading = false;
+    const btnCascade = document.getElementById('btn-trigger-cascade');
+    const cascadeStatus = document.getElementById('cascade-status');
+
+    btnCascade.addEventListener('click', () => {
+      if (isCascading) return;
+      isCascading = true;
+      cascadeStatus.innerText = "CASCADE ACTIVE";
+      cascadeStatus.className = "text-[9px] sm:text-[10px] text-red-400 font-bold uppercase animate-pulse";
+      soundEngine.playExplosion();
+
+      const colors = debrisGeometry.attributes.color.array;
+      const countToAffect = isMobileDevice ? 250 : 500;
+      for (let i = 0; i < countToAffect; i++) {
+        const idx = Math.floor(Math.random() * DEBRIS_COUNT);
+        colors[idx * 3] = 1.0;
+        colors[idx * 3 + 1] = 0.2;
+        colors[idx * 3 + 2] = 0.35;
+
+        debrisVelocities[idx].orbitSpeed *= (1.6 + Math.random() * 2);
+        debrisVelocities[idx].inclinationSpeed += (Math.random() - 0.5) * 0.06;
+      }
+      debrisGeometry.attributes.color.needsUpdate = true;
+
+      setTimeout(() => {
+        isCascading = false;
+        cascadeStatus.innerText = "CASCADE SIMULATED";
+        cascadeStatus.className = "text-[9px] sm:text-[10px] text-amber-400 uppercase";
+      }, 3500);
+    });
+
+    // Active Remediation Deploy
+    const btnClean = document.getElementById('btn-clean-debris');
+    const cleanupCountEl = document.getElementById('cleanup-count');
+    let cleanedTotal = 0;
+
+    btnClean.addEventListener('click', () => {
+      cleanedTotal += 144;
+      cleanupCountEl.innerText = `REMOVED: ${cleanedTotal.toLocaleString()}`;
+      soundEngine.playIonBeam();
+
+      const positions = debrisGeometry.attributes.position.array;
+      for (let i = 0; i < 180; i++) {
+        const idx = Math.floor(Math.random() * DEBRIS_COUNT);
+        positions[idx * 3] = 0;
+        positions[idx * 3 + 1] = 0;
+        positions[idx * 3 + 2] = 0;
+      }
+      debrisGeometry.attributes.position.needsUpdate = true;
+    });
+
+    // Audio & UI Controls
+    const btnAudio = document.getElementById('btn-audio');
+    const audioStatus = document.getElementById('audio-status');
+    const volumeSlider = document.getElementById('volume-slider');
+    const audioToast = document.getElementById('audio-toast');
+    const btnDismissToast = document.getElementById('btn-dismiss-toast');
+
+    function updateAudioUI(isAudible) {
+      if (audioStatus) audioStatus.innerText = isAudible ? "AUDIO: ON" : "AUDIO: OFF";
+      if (isAudible) {
+        btnAudio.parentElement.classList.add('audio-active');
+        btnAudio.className = "touch-btn glass-pill flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono bg-cyan-500/20 border border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(0,242,254,0.3)]";
+        if (audioToast) audioToast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+      } else {
+        btnAudio.parentElement.classList.remove('audio-active');
+        btnAudio.className = "touch-btn glass-pill flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-400/50 transition";
+      }
+    }
+
+    btnAudio.addEventListener('click', () => {
+      const isAudible = soundEngine.toggle();
+      updateAudioUI(isAudible);
+    });
+
+    if (volumeSlider) {
+      volumeSlider.addEventListener('input', (e) => {
+        soundEngine.setVolume(e.target.value);
+      });
+    }
+
+    if (audioToast) {
+      audioToast.addEventListener('click', () => {
+        if (!soundEngine.enabled) {
+          const isAudible = soundEngine.toggle();
+          updateAudioUI(isAudible);
+        }
+      });
+    }
+    if (btnDismissToast) {
+      btnDismissToast.addEventListener('click', (e) => {
+        e.stopPropagation();
+        audioToast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+      });
+    }
+
+    const unlockAudioOnInteraction = () => {
+      if (!soundEngine.enabled) soundEngine.resumeContext();
+      window.removeEventListener('pointerdown', unlockAudioOnInteraction);
+    };
+    window.addEventListener('pointerdown', unlockAudioOnInteraction, { once: true });
+
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        if (soundEngine.enabled) soundEngine.playGlassClick(1.4);
+      });
+      btn.addEventListener('click', () => {
+        if (soundEngine.enabled) soundEngine.playGlassClick(1.0);
+      });
+    });
+
+    const btnInspect = document.getElementById('btn-inspect');
+    const inspectLabel = document.getElementById('inspect-label');
+    const inspectBanner = document.getElementById('inspect-banner');
+
+    function toggleInspectMode() {
+      if (isGameMode) return;
+      isInspectMode = !isInspectMode;
+      controls.enabled = isInspectMode;
+      inspectBanner.classList.toggle('hidden', !isInspectMode);
+      inspectLabel.innerText = isInspectMode ? "EXIT" : "ORBIT";
+      btnInspect.className = isInspectMode
+        ? "touch-btn glass-pill flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-emerald-500/20 border border-emerald-400 text-emerald-300"
+        : "touch-btn glass-pill flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-cyan-300 border-cyan-400/40 hover:bg-cyan-500/20";
+      soundEngine.playBeep(isInspectMode ? 900 : 600, 0.08);
+    }
+    btnInspect.addEventListener('click', toggleInspectMode);
+
+    /* --------------------------------------------------------------------------
+       MISSION BRIEFING & SYSTEM INTEL MODAL CONTROLLER (FTUE)
+       -------------------------------------------------------------------------- */
+    const intelModal = document.getElementById('intel-modal');
+    const btnOpenIntel = document.getElementById('btn-open-intel');
+    const btnCloseIntel = document.getElementById('btn-close-intel');
+    const btnEnterOrbitCta = document.getElementById('btn-enter-orbit-cta');
+    const chkDontShowIntel = document.getElementById('chk-dont-show-intel');
+    const STORAGE_KEY_DONT_SHOW = 'orbit_hide_welcome_brief';
+
+    function openMissionIntelModal() {
+      if (!intelModal) return;
+      intelModal.classList.remove('opacity-0', 'pointer-events-none');
+      intelModal.classList.add('opacity-100', 'pointer-events-auto');
+      soundEngine.playBeep(880, 0.1, 'triangle');
+    }
+
+    function closeMissionIntelModal() {
+      if (!intelModal) return;
+      intelModal.classList.add('opacity-0', 'pointer-events-none');
+      intelModal.classList.remove('opacity-100', 'pointer-events-auto');
+      soundEngine.playGlassClick(1.1);
+
+      if (chkDontShowIntel && chkDontShowIntel.checked) {
+        localStorage.setItem(STORAGE_KEY_DONT_SHOW, 'true');
+      } else {
+        localStorage.removeItem(STORAGE_KEY_DONT_SHOW);
+      }
+    }
+
+    if (btnOpenIntel) btnOpenIntel.addEventListener('click', openMissionIntelModal);
+    if (btnCloseIntel) btnCloseIntel.addEventListener('click', closeMissionIntelModal);
+    if (btnEnterOrbitCta) {
+      btnEnterOrbitCta.addEventListener('click', () => {
+        closeMissionIntelModal();
+        if (!soundEngine.enabled) {
+          const isAudible = soundEngine.toggle();
+          updateAudioUI(isAudible);
+        }
+      });
+    }
+
+    intelModal.addEventListener('click', (e) => {
+      if (e.target === intelModal) closeMissionIntelModal();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if ((e.key === 'i' || e.key === 'I') && !isGameMode) {
+        if (intelModal.classList.contains('opacity-100')) {
+          closeMissionIntelModal();
+        } else {
+          openMissionIntelModal();
+        }
+      } else if (e.key === 'Escape' && intelModal.classList.contains('opacity-100')) {
+        closeMissionIntelModal();
+      } else if ((e.key === 'c' || e.key === 'C') && !isGameMode && btnCinematic) {
+        btnCinematic.click();
+      } else if ((e.key === 'm' || e.key === 'M') && btnAudio) {
+        btnAudio.click();
+      } else if ((e.key === 'h' || e.key === 'H') && !isGameMode && btnEnterGame) {
+        enterDebrisHunterMode();
+      } else if ((e.key === 'l' || e.key === 'L') && !isGameMode && btnHighlight) {
+        btnHighlight.click();
+      } else if (['1', '2', '3', '4', '5'].includes(e.key) && !isGameMode) {
+        const stageNum = parseInt(e.key, 10) - 1;
+        scrollToSection(stageNum);
+      }
+    });
+
+    const btnCinematic = document.getElementById('btn-cinematic');
+    const cinematicIcon = document.getElementById('cinematic-icon');
+    const cinematicLabel = document.getElementById('cinematic-label');
+    const storyContainer = document.getElementById('story-container');
+    let isCinematic = false;
+
+    if (btnCinematic) {
+      btnCinematic.addEventListener('click', () => {
+        if (isGameMode) return;
+        isCinematic = !isCinematic;
+        storyContainer.style.opacity = isCinematic ? '0' : '1';
+        storyContainer.style.pointerEvents = isCinematic ? 'none' : 'auto';
+        
+        cinematicLabel.innerText = isCinematic ? 'RESTORE' : 'CINEMATIC';
+        cinematicIcon.setAttribute('data-lucide', isCinematic ? 'eye-off' : 'eye');
+        btnCinematic.className = isCinematic
+          ? "touch-btn glass-pill flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono bg-cyan-500/25 border border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(0,242,254,0.3)]"
+          : "touch-btn glass-pill flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300 hover:text-cyan-300 transition";
+        soundEngine.playBeep(isCinematic ? 1100 : 800, 0.08);
+        lucide.createIcons();
+      });
+    }
+
+    /* ==========================================================================
+       6. UNIFIED RENDER & GAME KINEMATICS LOOP
+       ========================================================================== */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.1);
+      const now = new Date();
+
+      const utcTimeEl = document.getElementById('utc-time');
+      if (utcTimeEl) {
+        utcTimeEl.innerText = now.toUTCString().slice(17, 25) + '.' + String(Math.floor(now.getMilliseconds() / 10)).padStart(2, '0');
+      }
+
+      // Crisp planetary rotation (no blurry clouds interfering)
+      earth.rotation.y += 0.0006;
+
+      ringLEO.rotation.z += 0.00025;
+      ringISS.rotation.z += 0.0002;
+      ringGEO.rotation.z += 0.0001;
+
+      strobeBeacon.intensity = 1.2 + Math.sin(Date.now() * 0.009) * 1.6;
+
+      if (craftModels.iss.visible && craftModels.iss.userData.strobeRed) {
+        const blinkTime = Date.now() * 0.008;
+        craftModels.iss.userData.strobeRed.intensity = Math.sin(blinkTime) > 0.4 ? 2.8 : 0.1;
+        craftModels.iss.userData.strobeGreen.intensity = Math.sin(blinkTime + Math.PI) > 0.4 ? 2.8 : 0.1;
+      }
+
+      if (craftModels.envisat.visible) {
+        craftModels.envisat.rotation.x += 0.012;
+        craftModels.envisat.rotation.y += 0.018;
+        craftModels.envisat.rotation.z += 0.008;
+      } else {
+        craftModels.envisat.rotation.set(0, 0, 0);
+      }
+
+      // Debris kinematics
+      const posArray = debrisGeometry.attributes.position.array;
+      for (let i = 0; i < DEBRIS_COUNT; i++) {
+        const vel = debrisVelocities[i];
+        if (vel.isCaptured) continue;
+
+        vel.theta += vel.orbitSpeed;
+        vel.phi += vel.inclinationSpeed;
+
+        const x = vel.radius * Math.cos(vel.phi) * Math.cos(vel.theta);
+        const y = vel.radius * Math.sin(vel.phi);
+        const z = vel.radius * Math.cos(vel.phi) * Math.sin(vel.theta);
+
+        posArray[i * 3] = x;
+        posArray[i * 3 + 1] = y;
+        posArray[i * 3 + 2] = z;
+      }
+      debrisGeometry.attributes.position.needsUpdate = true;
+
+      // SGP4 Propagate Active Target
+      if (activeSatrec && activeTargetId !== 'starlink-cluster') {
+        const prop = satellite.propagate(activeSatrec, now);
+        if (prop && prop.position) {
+          currentSatWorldPos = eciToSceneVector(prop.position);
+          satGroup.position.copy(currentSatWorldPos);
+
+          const gmst = satellite.gstime(now);
+          const geodetic = satellite.eciToGeodetic(prop.position, gmst);
+          const latDeg = (satellite.radiansToDegrees(geodetic.latitude)).toFixed(2);
+          const lonDeg = (satellite.radiansToDegrees(geodetic.longitude)).toFixed(2);
+          const altKm = (geodetic.height).toFixed(1);
+
+          let velKms = "7.66";
+          if (prop.velocity) {
+            const vMag = Math.sqrt(
+              prop.velocity.x * prop.velocity.x +
+              prop.velocity.y * prop.velocity.y +
+              prop.velocity.z * prop.velocity.z
+            );
+            velKms = vMag.toFixed(2);
+          }
+
+          document.getElementById('hud-velocity').innerText = `${velKms} km/s`;
+          document.getElementById('hud-altitude').innerText = `${altKm} km`;
+          document.getElementById('tel-coords').innerText = `${latDeg}°${latDeg >= 0 ? 'N' : 'S'}, ${lonDeg}°${lonDeg >= 0 ? 'E' : 'W'}`;
+          document.getElementById('tel-altitude').innerText = `${altKm} km`;
+          document.getElementById('tel-velocity').innerText = `${velKms} km/s`;
+
+          if (cameraLockedOnTarget && trackOverlayCoords) {
+            trackOverlayCoords.innerText = `${altKm} km`;
+          }
+        }
+      } else if (activeTargetId === 'starlink-cluster') {
+        const trainTime = Date.now() * 0.0003;
+        for (let s = 0; s < STARLINK_COUNT; s++) {
+          const angle = trainTime + s * 0.038;
+          const r = 5.42;
+          const sx = r * Math.cos(angle);
+          const sz = r * Math.sin(angle);
+          const sy = Math.sin(angle * 2) * 0.65;
+          starlinkNodes[s].position.set(sx, sy, sz);
+          starlinkNodes[s].lookAt(0, 0, 0);
+        }
+      }
+
+      /* ----------------------------------------------------------------------
+         DEBRIS HUNTER FLIGHT SIMULATOR & WEAPONS LOOP
+         ---------------------------------------------------------------------- */
+      if (isGameMode) {
+        let thrust = 0;
+        let yaw = 0;
+        let pitch = 0;
+        const isBoost = keysPressed['ShiftLeft'] || keysPressed['ShiftRight'];
+
+        if (keysPressed['KeyW'] || keysPressed['ArrowUp']) thrust += 1;
+        if (keysPressed['KeyS'] || keysPressed['ArrowDown']) thrust -= 0.6;
+        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) yaw += 1;
+        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) yaw -= 1;
+        if (keysPressed['KeyQ']) pitch += 1;
+        if (keysPressed['KeyE']) pitch -= 1;
+
+        if (thrust !== 0 || isBoost) {
+          hunterFuel -= delta * (isBoost ? 6.5 : 2.5);
+          if (hunterFuel <= 0) {
+            hunterFuel = 0;
+            exitDebrisHunterMode();
+          }
+          updateGameGauges();
+        }
+
+        const accel = (isBoost ? 8.5 : 4.0) * thrust;
+        tugFlight.speed += accel * delta;
+        tugFlight.speed *= 0.96;
+
+        tugFlight.rotation.y += yaw * 2.2 * delta;
+        tugFlight.rotation.x += pitch * 2.0 * delta;
+
+        const forward = new THREE.Vector3(0, 0, 1).applyEuler(tugFlight.rotation);
+        tugFlight.velocity.copy(forward).multiplyScalar(tugFlight.speed);
+        tugFlight.position.addScaledVector(tugFlight.velocity, delta);
+
+        const radDist = tugFlight.position.length();
+        if (radDist < 5.3) tugFlight.position.setLength(5.3);
+        if (radDist > 10.0) tugFlight.position.setLength(10.0);
+
+        hunterTugGroup.position.copy(tugFlight.position);
+        hunterTugGroup.rotation.copy(tugFlight.rotation);
+
+        const camStandOff = forward.clone().multiplyScalar(isMobileDevice ? -3.0 : -2.4);
+        const camElevation = new THREE.Vector3(0, isMobileDevice ? 0.9 : 0.7, 0).applyEuler(tugFlight.rotation);
+        const targetCamPos = tugFlight.position.clone().add(camStandOff).add(camElevation);
+
+        camera.position.lerp(targetCamPos, 0.12);
+        camera.lookAt(tugFlight.position.clone().add(forward.clone().multiplyScalar(4.0)));
+
+        let nearestDist = 9999;
+        let nearestIdx = -1;
+        const nearestPos = new THREE.Vector3();
+
+        const searchLimit = isMobileDevice ? 250 : 400;
+        for (let i = 0; i < searchLimit; i++) {
+          const dx = posArray[i * 3] - tugFlight.position.x;
+          const dy = posArray[i * 3 + 1] - tugFlight.position.y;
+          const dz = posArray[i * 3 + 2] - tugFlight.position.z;
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestIdx = i;
+            nearestPos.set(posArray[i * 3], posArray[i * 3 + 1], posArray[i * 3 + 2]);
+          }
+        }
+
+        const distKm = (nearestDist * 120).toFixed(1);
+        const reticleDistTag = document.getElementById('reticle-distance-tag');
+        const reticleRing = document.getElementById('reticle-ring');
+        const gameTargetDist = document.getElementById('game-target-dist');
+
+        if (nearestDist < 5.0) {
+          if (gameTargetDist) gameTargetDist.innerText = `${distKm} km`;
+          if (reticleDistTag) reticleDistTag.innerText = `PROX: ${distKm} km`;
+
+          if (nearestDist < 1.6) {
+            if (reticleRing) reticleRing.className = "w-14 h-14 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-emerald-400 flex items-center justify-center transition-colors shadow-[0_0_15px_#10b981]";
+          } else {
+            if (reticleRing) reticleRing.className = "w-14 h-14 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-amber-400/80 flex items-center justify-center transition-colors";
+          }
+        } else {
+          if (gameTargetDist) gameTargetDist.innerText = "STANDBY";
+          if (reticleDistTag) reticleDistTag.innerText = "RADAR: --";
+          if (reticleRing) reticleRing.className = "w-14 h-14 sm:w-20 sm:h-20 rounded-full border-2 border-dashed border-cyan-400/50 flex items-center justify-center transition-colors";
+        }
+
+        // Harpoon Projectile & Tether Mechanics
+        if (harpoonState.fired && !harpoonState.hasTarget) {
+          harpoonState.flightDist += harpoonState.speed * delta;
+          harpoonState.position.addScaledVector(harpoonState.direction, harpoonState.speed * delta);
+          harpoonMesh.position.copy(harpoonState.position);
+
+          const tetherPoints = [hunterTugGroup.position.clone(), harpoonState.position.clone()];
+          tetherLine.geometry.setFromPoints(tetherPoints);
+
+          if (nearestIdx !== -1 && nearestDist < 0.95 && harpoonState.flightDist > 0.4) {
+            harpoonState.hasTarget = true;
+            harpoonState.targetIndex = nearestIdx;
+            debrisVelocities[nearestIdx].isCaptured = true;
+            harpoonState.targetDebrisPos.copy(nearestPos);
+
+            capturedDebrisMesh.position.copy(nearestPos);
+            capturedDebrisMesh.visible = true;
+
+            soundEngine.playSnareImpact();
+          } else if (harpoonState.flightDist >= harpoonState.maxRange) {
+            harpoonState.fired = false;
+            harpoonMesh.visible = false;
+            tetherLine.visible = false;
+          }
+        } else if (harpoonState.hasTarget) {
+          const dragTarget = hunterTugGroup.position.clone().add(forward.clone().multiplyScalar(-1.2));
+          harpoonState.targetDebrisPos.lerp(dragTarget, 0.1);
+          capturedDebrisMesh.position.copy(harpoonState.targetDebrisPos);
+
+          const tetherPoints = [hunterTugGroup.position.clone(), capturedDebrisMesh.position.clone()];
+          tetherLine.geometry.setFromPoints(tetherPoints);
+
+          harpoonState.deorbitTimer += delta;
+          if (harpoonState.deorbitTimer > 1.8) {
+            soundEngine.playAtmosphericBurn();
+
+            const idx = harpoonState.targetIndex;
+            posArray[idx * 3] = 0;
+            posArray[idx * 3 + 1] = 0;
+            posArray[idx * 3 + 2] = 0;
+
+            scoreNeutralized += 1;
+            scoreMassKg += Math.round(180 + Math.random() * 450);
+            updateGameGauges();
+
+            harpoonState.fired = false;
+            harpoonState.hasTarget = false;
+            harpoonState.deorbitTimer = 0;
+            capturedDebrisMesh.visible = false;
+            harpoonMesh.visible = false;
+            tetherLine.visible = false;
+          }
+        }
+      } else {
+        // Standard Camera Interpolation
+        if (!isInspectMode) {
+          if (cameraLockedOnTarget) {
+            const radialDir = currentSatWorldPos.clone().normalize();
+            const targetCam = currentSatWorldPos.clone().add(radialDir.clone().multiplyScalar(isMobileDevice ? 6.2 : 5.2));
+            targetCam.y += isMobileDevice ? 2.6 : 2.2;
+
+            camera.position.lerp(targetCam, 0.045);
+            camera.lookAt(currentSatWorldPos.clone().lerp(new THREE.Vector3(0, 0, 0), 0.18));
+          } else {
+            currentProgress += (targetProgress - currentProgress) * 0.08;
+            const totalStages = cameraStages.length - 1;
+            const scaledProgress = currentProgress * totalStages;
+            const stageIndex = Math.floor(scaledProgress);
+            const subProgress = scaledProgress - stageIndex;
+
+            const startStage = cameraStages[Math.min(stageIndex, totalStages)];
+            const endStage = cameraStages[Math.min(stageIndex + 1, totalStages)];
+
+            camera.position.lerpVectors(startStage.camPos, endStage.camPos, subProgress);
+            const currentLookAt = new THREE.Vector3().lerpVectors(startStage.lookAt, endStage.lookAt, subProgress);
+            camera.lookAt(currentLookAt);
+
+            debrisMaterial.size = THREE.MathUtils.lerp(startStage.debrisSize, endStage.debrisSize, subProgress);
+          }
+        } else {
+          controls.update();
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    window.onload = function() {
+      lucide.createIcons();
+      selectSatelliteTarget("25544");
+
+      const isBriefDismissed = localStorage.getItem(STORAGE_KEY_DONT_SHOW) === 'true';
+      if (!isBriefDismissed) {
+        setTimeout(() => {
+          openMissionIntelModal();
+        }, 350);
+      }
+
+      const btnRevealBriefing = document.getElementById('btn-reveal-briefing');
+      if (btnRevealBriefing) {
+        btnRevealBriefing.addEventListener('click', () => {
+          showBriefingPanel();
+          soundEngine.playGlassClick(1.2);
+        });
+      }
+
+      const btnCloseHero = document.getElementById('btn-close-hero');
+      if (btnCloseHero) {
+        btnCloseHero.addEventListener('click', () => {
+          hideBriefingPanel();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          soundEngine.playGlassClick(0.9);
+        });
+      }
+
+      animate();
+    };
+  </script>
+</body>
+</html>
